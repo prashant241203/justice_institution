@@ -1,7 +1,10 @@
 <?php
 // File: access_denied.php
 // Location: justice_project/access_denied.php
-session_start();
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,22 +83,23 @@ session_start();
                     <div class="col-md-6">
                         <small class="text-muted">User Role</small>
                         <div>
-                            <?php 
-                            if(isset($_SESSION['user_role'])) {
-                                $role = $_SESSION['user_role'];
-                                $color = match($role) {
-                                    'admin' => 'danger',
-                                    'judge' => 'success',
-                                    'lawyer' => 'primary',
-                                    'clerk' => 'warning',
-                                    'analyst' => 'info',
-                                    default => 'secondary'
-                                };
-                                echo "<span class='badge bg-$color'>" . ucfirst($role) . "</span>";
-                            } else {
-                                echo '<span class="badge bg-secondary">Guest</span>';
-                            }
-                            ?>
+                            <?php
+                                if(isset($_SESSION['user_role'])) {
+                                    $role = $_SESSION['user_role'];
+                                    switch($role) {
+                                        case 'admin': $color='danger'; break;
+                                        case 'judge': $color='success'; break;
+                                        case 'lawyer': $color='primary'; break;
+                                        case 'clerk': $color='warning'; break;
+                                        case 'analyst': $color='info'; break;
+                                        default: $color='secondary';
+                                    }
+                                    echo "<span class='badge bg-$color'>" . ucfirst($role) . "</span>";
+                                } else {
+                                    echo '<span class="badge bg-secondary">Guest</span>';
+                                }
+                                ?>
+
                         </div>
                     </div>
                 </div>

@@ -10,35 +10,39 @@ if(isset($_SESSION['user_id'])) {
 
 $error = '';
 if(isset($_POST['login'])) {
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $password = $_POST['password'];
-    
-    $query = "SELECT * FROM users WHERE email = '$email'";
-    $result = mysqli_query($conn, $query);
-    
-    if(mysqli_num_rows($result) == 1) {
-        $user = mysqli_fetch_assoc($result);
-        
-        // Verify password (using password_hash/password_verify)
-        if(password_verify($password, $user['password'])) {
-            // Set session variables
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['user_name'] = $user['name'];
-            $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['logged_in'] = true;
-            
-            // Redirect based on role
-            header("Location: index.php");
-            exit;
-        } else {
-            $error = "Invalid email or password!";
-        }
+    $password = trim($_POST['password']); // plain password
+$email = trim(mysqli_real_escape_string($conn, $_POST['email']));
+
+$query = "SELECT * FROM users WHERE email='$email' LIMIT 1";
+$result = mysqli_query($conn, $query);
+
+if($result && mysqli_num_rows($result) === 1) {
+    $user = mysqli_fetch_assoc($result);
+    // echo "<pre>";
+    // var_dump($password);
+    // var_dump($user['password']);
+    // var_dump(password_verify($password, $user['password']));
+    // exit;
+    if(password_verify($password, $user['password'])) {
+        //   echo "PASSWORD OK";
+        $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['user_role'] = $user['role'];
+        $_SESSION['logged_in'] = true;
+
+        header("Location: index.php");
+        exit;
     } else {
-        $error = "User not found!";
+        $error = "Invalid email or password!";
     }
+} else {
+    $error = "Invalid email or password!";
+}
+
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 if(!isset($_SESSION['logged_in'])) {
     header("Location: login.php");
     exit;
@@ -231,12 +233,12 @@ if(isset($_GET['search'])) {
                                                     </td>
                                                     <td>
                                                         <?php 
-                                                        $status_color = match($case['status']) {
-                                                            'Open' => 'success',
-                                                            'Pending' => 'warning',
-                                                            'Closed' => 'secondary',
-                                                            default => 'secondary'
-                                                        };
+                                                            switch($case['status']) {
+                                                                        case 'Open': $status_color='success'; break;
+                                                                        case 'Pending': $status_color='warning'; break;
+                                                                        case 'Closed': $status_color='secondary'; break;
+                                                                        default: $status_color='secondary';
+                                                            }
                                                         ?>
                                                         <span class="badge bg-<?php echo $status_color; ?>">
                                                             <i class="bi bi-circle-fill"></i> <?php echo $case['status']; ?>

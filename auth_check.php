@@ -7,7 +7,9 @@
  * Include this file at the top of every protected page
  */
 
-session_start();
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
 // ============================================
 // SECURITY CHECK FUNCTIONS

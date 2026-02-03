@@ -7,7 +7,7 @@ if(isset($_POST['register'])) {
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $role = 'analyst'; // Default role
     
-    // Check if email exists
+    // Check if email exists  
     $check = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
     if(mysqli_num_rows($check) == 0) {
         mysqli_query($conn, 
