@@ -1,0 +1,43 @@
+:root {
+  --ms-blue: #0078d4;
+  --muted: #6b7278;
+  --bg: #f3f6fb;
+  --card-radius: 12px
+}
+
+body {
+  font-family: Segoe UI, system-ui, -apple-system, 'Helvetica Neue', Arial;
+  background: var(--bg);
+  color: #222
+}
+
+.app-header {
+  background: linear-gradient(90deg, var(--ms-blue), #005b9e);
+  color: white
+}
+
+.sidebar {
+  background: #fff;
+  border-right: 1px solid #e6eef9
+}
+
+.card {
+  border-radius: var(--card-radius);
+  box-shadow: 0 6px 18px rgba(25, 40, 80, 0.06)
+}
+
+.ms-btn {
+  background: var(--ms-blue);
+  color: white;
+  border-radius: 10px;
+  padding: .45rem .9rem;
+  border: none
+}
+
+.small-muted {
+  color: var(--muted)
+}
+
+table.data-table thead {
+  background: #f7fbff
+}

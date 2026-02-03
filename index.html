@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Justice & Institutions — Mockup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="first.js"></script>
+  </head>
+  <body>
+    <header class="app-header py-2 shadow-sm">
+      <div class="container-fluid d-flex align-items-center"><img src="https://upload.wikimedia.org/wikipedia/commons/5/5f/Microsoft_logo_%282012%29.svg" alt="logo" style="height:34px; filter:brightness(10) invert(1); margin-right:14px">
+        <h4 class="mb-0 me-auto">Justice & Institutions — Mockup</h4>
+        <div class="d-flex align-items-center gap-3 small-muted">
+          <div>Welcome, Judicial Analyst</div><button class="btn btn-light btn-sm">Settings</button>
+        </div>
+      </div>
+    </header>
+    <div class="container-fluid mt-3">
+      <div class="row">
+        <nav class="col-12 col-lg-2 mb-3 sidebar p-3">
+          <div class="mb-3">
+            <div class="fw-bold mb-2">Navigation</div>
+            <ul class="nav flex-column">
+              <li class="nav-item"><a class="nav-link active" href="#dashboard">Dashboard</a></li>
+              <li class="nav-item"><a class="nav-link" href="#caseMaster">Case Master</a></li>
+              <li class="nav-item"><a class="nav-link" href="#hearings">Hearings</a></li>
+              <li class="nav-item"><a class="nav-link" href="#judgements">Judgements</a></li>
+              <li class="nav-item"><a class="nav-link" href="#reports">Reports</a></li>
+              <li class="nav-item"><a class="nav-link" href="#settings">Settings</a></li>
+            </ul>
+          </div>
+          <div class="mt-4">
+            <div class="fw-semibold">Quick actions</div>
+            <div class="d-grid gap-2 mt-2"><button class="ms-btn" onclick="openModal('addCase')">+ Add Case</button><button class="btn btn-outline-primary" onclick="runPatternCheck()">Run Pattern Detection</button></div>
+          </div>
+          <hr />
+          <div class="small-muted">System</div>
+          <div class="small-muted mt-1">Backend: PHP (mock) • Pattern Engine: JS Mock • Version: 1.0-MOCK</div>
+        </nav>
+        <main class="col-12 col-lg-10">
+          <!-- Dashboard -->
+          <section id="dashboard" class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Dashboard</h5>
+              <div class="small-muted">Cases & hearing analytics overview</div>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-3">
+                <div class="card p-3">
+                  <div class="small-muted">Total Cases</div>
+                  <h3 id="totalCases">--</h3>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card p-3">
+                  <div class="small-muted">Hearings Scheduled</div>
+                  <h3 id="totalHearings">--</h3>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card p-3">
+                  <div class="small-muted">Judgements Issued</div>
+                  <h3 id="totalJudgements">--</h3>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card p-3">
+                  <div class="small-muted">Pattern Flags</div>
+                  <h3 id="patternFlags">0</h3>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="card p-3">
+                  <canvas id="caseTrendChart" height="120"></canvas>
+                </div>
+              </div>
+            </div>
+          </section>
+          <!-- Case Master -->
+          <section id="caseMaster" class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Case Master</h5>
+              <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportCases()">Export CSV</button>
+                <button class="ms-btn" onclick="openModal('addCase')">+ Add Case</button>
+              </div>
+            </div>
+            <div class="card p-3">
+              <div class="table-responsive">
+                <table class="table data-table">
+                  <thead>
+                    <tr>
+                      <th>Case ID</th>
+                      <th>Title</th>
+                      <th>Date Filed</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="caseTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+          <!-- Hearings -->
+          <section id="hearings" class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>Hearings</h5>
+            </div>
+            <div class="card p-3">
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Hearing ID</th>
+                      <th>Case ID</th>
+                      <th>Date</th>
+                      <th>Court</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hearingTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+          <!-- Judgements -->
+          <section id="judgements" class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>Judgements</h5>
+            </div>
+            <div class="card p-3">
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Judgement ID</th>
+                      <th>Case ID</th>
+                      <th>Date</th>
+                      <th>Outcome</th>
+                    </tr>
+                  </thead>
+                  <tbody id="judgementTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+          <!-- Reports -->
+          <section id="reports" class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>Reports</h5>
+            </div>
+            <div class="card p-3">
+              <canvas id="patternChart" height="140"></canvas>
+            </div>
+          </section>undefined
+        </main>undefined
+      </div>undefined
+    </div>undefined
+    <!-- Add Case Modal -->undefined<div class="modal fade" id="addCase" tabindex="-1">undefined<div class="modal-dialog">undefined<div class="modal-content">
+          <div class="modal-header">
+            <h5>Add Case</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="caseFormModal" onsubmit="saveCaseModal(event)">
+              <div class="mb-2">
+                <label>Case Title</label>
+                <input type="text" id="cTitle" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label>Date Filed</label>
+                <input type="date" id="cDate" class="form-control" required>
+              </div>
+              <div class="mb-2">
+                <label>Status</label>
+                <select id="cStatus" class="form-control">
+                  <option>Open</option>
+                  <option>Pending</option>
+                  <option>Closed</option>
+                </select>
+              </div>
+              <div class="text-end">
+                <button class="ms-btn">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>undefined</div>undefined<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>undefined
+</html>
