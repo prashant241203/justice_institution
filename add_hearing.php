@@ -81,12 +81,13 @@ if (isset($_POST['schedule_hearing'])) {
     echo "Insert Query: " . htmlspecialchars($insertQuery) . "<br>";
     
     if(mysqli_query($conn, $insertQuery)) {
-        // ✅ Update case status
-        if ($case['status'] !== 'Closed') {
-            mysqli_query($conn,
-                "UPDATE cases SET status='In Progress' WHERE case_id = '$case_id'"
-            );
-        }
+       // Update case status & assign judge
+        mysqli_query($conn,
+            "UPDATE cases 
+            SET status='Pending', 
+                judge_id = '{$_SESSION['user_id']}' 
+            WHERE case_id = '$case_id'"
+        );
 
         header("Location: index.php#hearings");
         exit;
