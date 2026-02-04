@@ -22,7 +22,7 @@ $resultClosed = mysqli_query($conn, "SELECT COUNT(*) FROM cases
                                      WHERE judge_id = '$judgeId'
                                        AND status = 'Closed'");
 $totalClosed = ($resultClosed) ? mysqli_fetch_row($resultClosed)[0] : 0;
-
+    
 // 4️⃣ Clearance Rate
 $clearanceRate = ($totalClosed > 0) ? round(($casesJudged / $totalClosed) * 100) : 0;
 ?>
