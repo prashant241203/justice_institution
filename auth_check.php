@@ -69,8 +69,9 @@ function checkPagePermission() {
         'financial_reports.php' => ['admin', 'judge'],
         
         // Clerk, Lawyer, Judge, Admin pages
-        'add_hearing.php' => ['clerk', 'lawyer', 'judge', 'admin'],
-        'add_case.php' => ['clerk', 'admin'],
+        'add_hearing.php' => ['admin', 'judge', 'clerk'],
+        'add_case.php' => ['admin', 'clerk'],
+
         
         // All logged in users
         'index.php' => ['admin', 'judge', 'lawyer', 'clerk', 'analyst'],
@@ -131,7 +132,7 @@ function can($action) {
         'add_case' => ['admin', 'clerk'],
         'edit_case' => ['admin', 'clerk'],
         'delete_case' => ['admin'],
-        'add_hearing' => ['admin', 'clerk', 'lawyer'],
+        'add_hearing' => ['admin', 'judge', 'clerk'], // lawyer removed
         'add_judgement' => ['admin', 'judge'],
         'view_financial' => ['admin', 'judge'],
         'manage_users' => ['admin'],
@@ -141,6 +142,7 @@ function can($action) {
     
     return isset($permissions[$action]) && in_array($user_role, $permissions[$action]);
 }
+
 
 // ============================================
 // AUTO-RUN SECURITY CHECKS

@@ -142,11 +142,15 @@ $totalHearings   = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM hea
 $totalJudgements = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM judgements"))[0];
 $patternFlags    = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM pattern_flags"))[0];
 
+
+
+
+
 /* =====================
    TABLE DATA
 ===================== */
 // Only get cases with valid case_id
-$cases      = mysqli_query($conn,"SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC");
+$cases = mysqli_query( $conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DCE ");
 $hearings   = mysqli_query($conn,"SELECT * FROM hearings ORDER BY hearing_id DESC");
 $judgements = mysqli_query($conn,"SELECT * FROM judgements ORDER BY judgement_id DESC");
 
@@ -244,7 +248,7 @@ body { background:#f5f7fb; }
     <button class="ms-btn" data-bs-toggle="modal" data-bs-target="#addCase">
       + Add Case
     </button>
-    <button class="btn btn-outline-primary">
+    <button class="btn btn-outline-primary" onclick="runPatternDetection()">
       ▶ Run Pattern Detection
     </button>
   </div>
@@ -271,210 +275,134 @@ body { background:#f5f7fb; }
 
 <!-- ===== CASE MASTER ===== -->
 <section id="caseMaster" class="mb-4">
-<div class="card p-3">
+  <div class="card p-3">
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">Case Master</h5>
-  <div>
-    <a href="?export=cases" class="btn btn-outline-secondary btn-sm me-2">
-      📥 Export CSV
-    </a>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCase">+ Add Case</button>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Case Master</h5>
+
+      <div>
+        <a href="?export=cases" class="btn btn-outline-secondary btn-sm me-2">
+          📥 Export CSV
+        </a>
+
+        <button class="btn btn-primary btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#addCase">
+          + Add Case
+        </button>
+      </div>
+    </div>
+
+    <!-- Case Table -->
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Case ID</th>
+          <th>Title</th>
+          <th>Date Filed</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <!-- 🔥 AJAX will fill this -->
+      <tbody id="caseBody">
+        <tr>
+          <td colspan="5" class="text-center">
+            Loading cases...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <ul class="pagination justify-content-center mt-3"
+        id="casePagination"></ul>
+
   </div>
-</div>
-
-<table class="table table-bordered">
-<thead>
-<tr>
-    <th>Case ID</th>
-    <th>Title</th>
-    <th>Date Filed</th>
-    <th>Status</th>
-    <th>Actions</th>
-  </tr>
-</thead>
-<tbody>
-<?php 
-if(mysqli_num_rows($cases) == 0): ?>
-<tr>
-  <td colspan="5" class="text-center">No cases found. Add your first case using the "+ Add Case" button.</td>
-</tr>
-<?php else: 
-  while($c = mysqli_fetch_assoc($cases)): 
-    $case_id = $c['case_id'];
-    // Only show if case_id is not empty
-    if(empty($case_id)) continue;
-?>
-<tr>
-  <td><?= htmlspecialchars($case_id) ?></td>
-  <td><?= htmlspecialchars($c['title']) ?></td>
-  <td><?= $c['date_filed'] ?></td>
-  <td>
-    <span class="badge bg-<?= 
-      ($c['status'] == 'Open') ? 'success' : 
-      (($c['status'] == 'Pending') ? 'warning' : 'secondary') ?>">
-      <?= $c['status'] ?>
-    </span>
-  </td>
-
-  <td>
-    <!-- HEARINGS BUTTON -->
-    <a href="add_hearing.php?case_id=<?= urlencode($case_id) ?>"
-       class="btn btn-sm btn-outline-primary">
-       Hearings
-    </a>
-
-    <?php
-    // Check if case has hearings and is not closed
-    $hcQuery = mysqli_query(
-      $conn,
-      "SELECT COUNT(*) FROM hearings WHERE case_id = '" . mysqli_real_escape_string($conn, $case_id) . "'"
-    );
-    $hc = mysqli_fetch_row($hcQuery)[0];
-
-    if ($hc > 0 && $c['status'] !== 'Closed'):
-    ?>
-      <a href="add_judgement.php?case_id=<?= urlencode($c['case_id']) ?>"
-        class="btn btn-sm btn-outline-success">
-        Judgement
-      </a>
-    <?php endif; ?>
-  </td>
-</tr>
-<?php 
-  endwhile;
-endif; 
-?>
-</tbody>
-</table>
-
-</div>
 </section>
 
 <!-- ===== HEARINGS ===== -->
 <section id="hearings" class="mb-4">
-<div class="card p-3">
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">Hearings</h5>
-  <div>
-    <a href="?export=hearings" class="btn btn-outline-secondary btn-sm">
-      📥 Export CSV
-    </a>
-  </div>
-</div>
-<table class="table table-bordered">
-<thead>
-<tr>
-  <th>Hearing ID</th>
-  <th>Case ID</th>
-  <th>Date</th>
-  <th>Court</th>
-</tr>
-</thead>
-<tbody>
-<?php 
-// Reset pointer for hearings
-mysqli_data_seek($hearings, 0);
+  <div class="card p-3">
 
-if(mysqli_num_rows($hearings) == 0): ?>
-<tr>
-  <td colspan="4" class="text-center">No hearings scheduled yet.</td>
-</tr>
-<?php else: 
-  while($h = mysqli_fetch_assoc($hearings)): 
-?>
-<tr>
-  <td><?= htmlspecialchars($h['hearing_id']) ?></td>
-  <td><?= htmlspecialchars($h['case_id']) ?></td>
-  <td><?= $h['hearing_date'] ?></td>
-  <td><?= htmlspecialchars($h['court_name']) ?></td>
-</tr>
-<?php 
-  endwhile;
-endif; 
-?>
-</tbody>
-</table>
-</div>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Hearings</h5>
+      <div>
+        <a href="?export=hearings" class="btn btn-outline-secondary btn-sm">
+          📥 Export CSV
+        </a>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Hearing ID</th>
+          <th>Case ID</th>
+          <th>Date</th>
+          <th>Court</th>
+        </tr>
+      </thead>
+
+      <!-- 🔥 AJAX fills this -->
+      <tbody id="hearingBody">
+        <tr>
+          <td colspan="4" class="text-center">Loading hearings...</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <ul class="pagination justify-content-center mt-3"
+        id="hearingPagination"></ul>
+
+  </div>
 </section>
+
 
 <!-- ===== JUDGEMENTS ===== -->
 <section id="judgements" class="mb-4">
-<div class="card p-3">
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">Judgements</h5>
-  <div>
-    <a href="?export=judgements" class="btn btn-outline-secondary btn-sm">
-      📥 Export CSV
-    </a>
-  </div>
-</div>
-<table class="table table-bordered">
-<thead>
-<tr>
-  <th>Judgement ID</th>
-  <th>Case ID</th>
-  <th>Date</th>
-  <th>Outcome</th>
-  <th>Summary</th>
-</tr>
-</thead>
-<tbody>
-<?php 
-// Reset pointer for judgements
-mysqli_data_seek($judgements, 0);
+  <div class="card p-3">
 
-if(mysqli_num_rows($judgements) == 0): ?>
-<tr>
-  <td colspan="5" class="text-center">No judgements issued yet.</td>
-</tr>
-<?php else: 
-  while($j = mysqli_fetch_assoc($judgements)): 
-?>
-<tr>
-  <td><?= htmlspecialchars($j['judgement_id']) ?></td>
-  <td><?= htmlspecialchars($j['case_id']) ?></td>
-  <td><?= $j['judgement_date'] ?></td>
-  <td>
-    <?php 
-    $badge_class = 'bg-secondary';
-    $outcome = $j['outcome'] ?? '';
-    if(in_array($outcome, ['Convicted', 'Guilty', 'Imprisonment', 'Fine Imposed'])) {
-        $badge_class = 'bg-danger';
-    } elseif(in_array($outcome, ['Acquitted', 'Not Guilty', 'Appeal Allowed'])) {
-        $badge_class = 'bg-success';
-    } elseif(in_array($outcome, ['Dismissed', 'Case Withdrawn', 'Appeal Dismissed'])) {
-        $badge_class = 'bg-warning text-dark';
-    } elseif(in_array($outcome, ['Settlement', 'Probation'])) {
-        $badge_class = 'bg-info';
-    }
-    ?>
-    <span class="badge <?= $badge_class ?>">
-      <?= htmlspecialchars($outcome) ?>
-    </span>
-  </td>
-  <td>
-    <?php 
-    $summary = $j['summary'] ?? '';
-    if(!empty($summary)) {
-        if(strlen($summary) > 50) {
-            echo htmlspecialchars(substr($summary, 0, 50)) . '...';
-        } else {
-            echo htmlspecialchars($summary);
-        }
-    } else {
-        echo '<span class="text-muted">No summary</span>';
-    }
-    ?>
-  </td>
-</tr>
-<?php 
-  endwhile;
-endif; 
-?>
-</tbody>
-</table>
-</div>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">Judgements</h5>
+      <div>
+        <a href="?export=judgements" class="btn btn-outline-secondary btn-sm">
+          📥 Export CSV
+        </a>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Judgement ID</th>
+          <th>Case ID</th>
+          <th>Date</th>
+          <th>Outcome</th>
+          <th>Summary</th>
+        </tr>
+      </thead>
+
+      <!-- 🔥 AJAX will fill this -->
+      <tbody id="judgementBody">
+        <tr>
+          <td colspan="5" class="text-center">Loading judgements...</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <ul class="pagination justify-content-center mt-3"
+        id="judgementPagination"></ul>
+
+  </div>
 </section>
 
 <!-- ===== REPORTS ===== -->
@@ -676,6 +604,58 @@ endif;
 
 </div>
 </section>
+<section id="patternFlagsSection" class="mb-4 mt-3">
+  <div class="card p-3">
+    <h5>Detected Pattern Flags</h5>
+
+    <table class="table table-bordered table-sm mt-2">
+      <thead>
+        <tr>
+          <th>Case ID</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php
+$pf = mysqli_query($conn,"
+    SELECT case_id, flag_type, description, created_at
+    FROM pattern_flags
+    ORDER BY created_at DESC
+");
+
+if (!$pf) {
+    echo "<tr>
+            <td colspan='4' class='text-danger text-center'>
+              SQL Error: " . mysqli_error($conn) . "
+            </td>
+          </tr>";
+}
+elseif (mysqli_num_rows($pf) == 0) {
+    echo "<tr>
+            <td colspan='4' class='text-center'>
+              No patterns detected
+            </td>
+          </tr>";
+}
+else {
+    while ($p = mysqli_fetch_assoc($pf)) {
+        echo "
+        <tr>
+          <td>{$p['case_id']}</td>
+          <td><span class='badge bg-danger'>{$p['flag_type']}</span></td>
+          <td>{$p['description']}</td>
+          <td>{$p['created_at']}</td>
+        </tr>";
+    }
+}
+?>
+
+      </tbody>
+    </table>
+  </div>
+</section>
 
 </main>
 </div>
@@ -868,6 +848,200 @@ new Chart(document.getElementById('patternChart'), {
     }
   }
 });
+function loadCases(page = 1) {
+
+  fetch("fetch_cases.php?page=" + page)
+    .then(res => res.json())
+    .then(data => {
+
+      const tbody = document.getElementById("caseBody");
+      const pagination = document.getElementById("casePagination");
+
+      tbody.innerHTML = "";
+      pagination.innerHTML = "";
+
+      // No records
+      if (data.cases.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center">
+              No cases found
+            </td>
+          </tr>`;
+        return;
+      }
+
+      // Table rows
+      data.cases.forEach(c => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${c.case_id}</td>
+            <td>${c.title}</td>
+            <td>${c.date_filed}</td>
+            <td>${c.status}</td>
+            <td>
+              <a href="add_hearing.php?case_id=${c.case_id}"
+                class="btn btn-sm btn-outline-primary">
+                Hearings
+              </a>
+
+              ${
+                c.hearing_count > 0 && c.status !== 'Closed'
+                ? `<a href="add_judgement.php?case_id=${c.case_id}"
+                    class="btn btn-sm btn-outline-success ms-1">
+                    Judgement
+                  </a>`
+                : ''
+              }
+           </td>
+          </tr>`;
+      });
+
+      // Pagination buttons
+      for (let i = 1; i <= data.pages; i++) {
+        pagination.innerHTML += `
+          <li class="page-item ${i === page ? 'active' : ''}">
+            <a class="page-link"
+               href="javascript:void(0)"
+               onclick="loadCases(${i})">
+               ${i}
+            </a>
+          </li>`;
+      }
+    });
+}
+
+// First page auto load
+document.addEventListener("DOMContentLoaded", function () {
+  loadCases(1);
+});
+
+function loadHearings(page = 1) {
+
+  fetch("fetch_hearings.php?page=" + page)
+    .then(res => res.json())
+    .then(data => {
+
+      const body = document.getElementById("hearingBody");
+      const pagination = document.getElementById("hearingPagination");
+
+      body.innerHTML = "";
+      pagination.innerHTML = "";
+
+      if (data.hearings.length === 0) {
+        body.innerHTML = `
+          <tr>
+            <td colspan="4" class="text-center">
+              No hearings scheduled yet.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      data.hearings.forEach(h => {
+        body.innerHTML += `
+          <tr>
+            <td>${h.hearing_id}</td>
+            <td>${h.case_id}</td>
+            <td>${h.hearing_date}</td>
+            <td>${h.court_name}</td>
+          </tr>`;
+      });
+
+      for (let i = 1; i <= data.pages; i++) {
+        pagination.innerHTML += `
+          <li class="page-item">
+            <a class="page-link"
+               href="javascript:void(0)"
+               onclick="loadHearings(${i})">
+              ${i}
+            </a>
+          </li>`;
+      }
+    });
+}
+
+/* Auto load */
+document.addEventListener("DOMContentLoaded", () => {
+  loadHearings();
+});
+
+function loadJudgements(page = 1) {
+
+  fetch("fetch_judgements.php?page=" + page)
+    .then(res => res.json())
+    .then(data => {
+
+      const body = document.getElementById("judgementBody");
+      const pagination = document.getElementById("judgementPagination");
+
+      body.innerHTML = "";
+      pagination.innerHTML = "";
+
+      if (data.judgements.length === 0) {
+        body.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center">
+              No judgements issued yet.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      data.judgements.forEach(j => {
+
+        let badge = 'bg-secondary';
+
+        if (['Convicted','Guilty','Imprisonment','Fine Imposed'].includes(j.outcome))
+          badge = 'bg-danger';
+        else if (['Acquitted','Not Guilty','Appeal Allowed'].includes(j.outcome))
+          badge = 'bg-success';
+        else if (['Dismissed','Case Withdrawn','Appeal Dismissed'].includes(j.outcome))
+          badge = 'bg-warning text-dark';
+        else if (['Settlement','Probation'].includes(j.outcome))
+          badge = 'bg-info';
+
+        let summary = j.summary ?? '';
+        if (summary.length > 50) summary = summary.substring(0,50) + '...';
+        if (summary === '') summary = '<span class="text-muted">No summary</span>';
+
+        body.innerHTML += `
+          <tr>
+            <td>${j.judgement_id}</td>
+            <td>${j.case_id}</td>
+            <td>${j.judgement_date}</td>
+            <td><span class="badge ${badge}">${j.outcome}</span></td>
+            <td>${summary}</td>
+          </tr>`;
+      });
+
+      for (let i = 1; i <= data.pages; i++) {
+        pagination.innerHTML += `
+          <li class="page-item">
+            <a class="page-link"
+               href="javascript:void(0)"
+               onclick="loadJudgements(${i})">
+              ${i}
+            </a>
+          </li>`;
+      }
+    });
+}
+
+/* Auto load */
+document.addEventListener("DOMContentLoaded", () => {
+  loadJudgements();
+});
+
+function runPatternDetection(){
+  fetch("run_pattern.php")
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message);
+      location.reload(); // dashboard + charts refresh
+    });
+}
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
