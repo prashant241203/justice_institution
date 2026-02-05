@@ -7,6 +7,20 @@ if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'admin'){
     header("Location: access_denied.php");
     exit;
 }
+if(isset($_GET['approve'])){
+    $id = intval($_GET['approve']);
+    mysqli_query($conn,"UPDATE users SET status='approved' WHERE user_id=$id");
+    header("Location: admin_panel.php");
+    exit;
+}
+
+// ---------- REJECT USER ----------
+if(isset($_GET['reject'])){
+    $id = intval($_GET['reject']);
+    mysqli_query($conn,"UPDATE users SET status='rejected' WHERE user_id=$id");
+    header("Location: admin_panel.php");
+    exit;
+}
 
 // ---------- HANDLE ADD USER ----------
 if(isset($_POST['add_user'])){
@@ -15,7 +29,7 @@ if(isset($_POST['add_user'])){
     $role = $_POST['role'];
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
-    mysqli_query($conn,"INSERT INTO users (name,email,password,role) VALUES ('$name','$email','$password','$role')");
+    mysqli_query($conn," INSERT INTO users (name,email,password,role,status) VALUES ('$name','$email','$password','$role','approved') ");
     header("Location: admin_panel.php");
     exit;
 }
@@ -26,12 +40,17 @@ if(isset($_POST['edit_user'])){
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $role = $_POST['role'];
-    $password_sql = '';
+    $status = $_POST['status'];
+
+    $sql = "UPDATE users SET name='$name', email='$email', role='$role', status='$status'";
     if(!empty($_POST['password'])){
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $password_sql = ", password='$password'";
+        $sql .= ", password='$password'";
     }
-    mysqli_query($conn,"UPDATE users SET name='$name', email='$email', role='$role' $password_sql WHERE user_id=$id");
+    $sql .= " WHERE user_id=$id";
+
+    mysqli_query($conn, $sql);
+
     header("Location: admin_panel.php");
     exit;
 }
@@ -47,7 +66,11 @@ if(isset($_GET['delete'])){
 }
 
 // ---------- FETCH USERS ----------
-$users = mysqli_query($conn,"SELECT * FROM users ORDER BY user_id ASC");
+$users = mysqli_query(
+    $conn,
+    "SELECT * FROM users ORDER BY status='pending' DESC, user_id ASC"
+);
+
 
 // ---------- STATS ----------
 $totalUsers = mysqli_num_rows($users);
@@ -141,7 +164,7 @@ while($row = mysqli_fetch_assoc($roleResult)){
             <div class="card-body table-responsive">
                 <table class="table table-hover user-table">
                     <thead class="table-light">
-                        <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+                        <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Actions</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                     <?php
@@ -157,10 +180,45 @@ while($row = mysqli_fetch_assoc($roleResult)){
                         <td><span class="badge bg-<?= $color ?>"><?= ucfirst($user['role']) ?></span></td>
                         <td>
                             <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#editUserModal<?= $user['user_id'] ?>">Edit</button>
-                            <?php if($user['user_id'] != $_SESSION['user_id']): ?>
-                            <a href="?delete=<?= $user['user_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this user?')">Delete</a>
+                            <?php if($user['user_id'] != $_SESSION['user_id'] && $user['role'] != 'admin'): ?>
+                                    <a href="?delete=<?= $user['user_id'] ?>" 
+                                    class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete this user?')">
+                                    Delete
+                                    </a>
+                            <?php endif; ?>
+                            <?php if(
+                                $user['status'] === 'pending' &&
+                                $user['user_id'] != $_SESSION['user_id'] &&
+                                $user['role'] != 'admin'
+                                 ): ?>
+                                <a href="?approve=<?= $user['user_id'] ?>" 
+                                class="btn btn-sm btn-success"
+                                onclick="return confirm('Approve this user?')">
+                                Approve
+                                </a>
+
+                                <a href="?reject=<?= $user['user_id'] ?>" 
+                                class="btn btn-sm btn-warning"
+                                onclick="return confirm('Reject this user?')">
+                                Reject
+                                </a>
                             <?php endif; ?>
                         </td>
+                        <td>
+                            <?php
+                                $statusColors = [
+                                    'approved'=>'success',
+                                    'pending'=>'warning',
+                                    'rejected'=>'danger'
+                                ];
+                                $sColor = $statusColors[$user['status']] ?? 'secondary';
+                            ?>
+                            <span class="badge bg-<?= $sColor ?>">
+                                <?= ucfirst($user['status']) ?>
+                            </span>
+                        </td>
+
                     </tr>
                     <?php endwhile; ?>
                     </tbody>
@@ -215,8 +273,15 @@ while($user=mysqli_fetch_assoc($users)):
     <form method="POST">
       <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
       <div class="modal-content">
-        <div class="modal-header bg-primary text-white"><h5 class="modal-title">Edit User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header bg-primary text-white"><h5 class="modal-title">Edit User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</select>
+</div>
         <div class="modal-body">
+             <select class="form-select mb-2" name="status">
+                <option value="approved" <?= $user['status']=='approved'?'selected':'' ?>>Approved</option>
+                <option value="pending" <?= $user['status']=='pending'?'selected':'' ?>>Pending</option>
+                <option value="rejected" <?= $user['status']=='rejected'?'selected':'' ?>>Rejected</option>
+            </select>
             <input class="form-control mb-2" name="name" value="<?= htmlspecialchars($user['name']) ?>" required>
             <input class="form-control mb-2" name="email" type="email" value="<?= htmlspecialchars($user['email']) ?>" required>
             <input class="form-control mb-2" name="password" type="password" placeholder="Leave blank to keep current">

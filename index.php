@@ -1,11 +1,13 @@
 <?php
 session_start();
+require_once("auth_check.php");
+require_once("connect.php");
+
 if(!isset($_SESSION['logged_in'])) {
     header("Location: login.php");
     exit;
 }
-require_once("auth_check.php");
-require_once("connect.php");
+
 
 /* =====================
    CSV EXPORT FUNCTIONS
@@ -162,6 +164,7 @@ $q = mysqli_query($conn,"SELECT title FROM cases WHERE case_id != ''");
 while($r = mysqli_fetch_assoc($q)){
     $caseTitles[] = $r['title'];
 }
+
 ?>
 <!doctype html>
 <html lang="en">

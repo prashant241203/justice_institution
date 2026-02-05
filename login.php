@@ -11,24 +11,34 @@ if(isset($_SESSION['user_id'])) {
 $error = '';
 if(isset($_POST['login'])) {
     $password = trim($_POST['password']); // plain password
-    $email = trim(mysqli_real_escape_string($conn, $_POST['email']));
+    $email = trim(mysqli_real_escape_string($conn, $_POST['email']));   
 
     $query = "SELECT * FROM users WHERE email='$email' LIMIT 1";
     $result = mysqli_query($conn, $query);
 
     if($result && mysqli_num_rows($result) === 1) {
         $user = mysqli_fetch_assoc($result);
-        if(password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['user_name'] = $user['name'];
-            $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['logged_in'] = true;
+                if(!password_verify($password, $user['password'])) {
+                $error = "Invalid email or password!";
+                      } else {
 
-            header("Location: index.php");
-            exit;
-        } else {
-            $error = "Invalid email or password!";
+                if($user['status'] === 'pending') {
+                    $error = "Your account is pending admin approval.";
+                } 
+                elseif($user['status'] === 'rejected') {
+                    $error = "Your registration request was rejected. Please register again with a different role.";
+                } 
+                else {
+                    // APPROVED USER → LOGIN
+                    $_SESSION['user_id'] = $user['user_id'];
+                    $_SESSION['user_name'] = $user['name'];
+                    $_SESSION['user_email'] = $user['email'];
+                    $_SESSION['user_role'] = $user['role'];
+                    $_SESSION['logged_in'] = true;
+
+                    header("Location: index.php");
+                    exit;
+                }
         }
     } else {
         $error = "Invalid email or password!";
@@ -94,12 +104,19 @@ if(isset($_POST['login'])) {
             </div>
         </div>
         <div class="login-body">
-            <?php if($error): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <?php echo $error; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
+                    <?php if(isset($_GET['pending'])): ?>
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        Your account has been created and is pending admin approval.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if($error): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?php echo $error; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
 
             <form method="POST" action="">
                 <div class="mb-3">
@@ -124,8 +141,17 @@ if(isset($_POST['login'])) {
 
             <!-- Link to Registration -->
             <div class="register-link">
-                <small>Don't have an account? <a href="registration.php">Create Account</a></small>
+                <small class="text-muted">New User?</small><br>
+
+                <a href="register_lawyer.php" class="d-block mt-1">Register as Lawyer</a>
+                <a href="register_clerk.php" class="d-block">Register as Clerk</a>
+                <a href="register_analyst.php" class="d-block">Register as Analyst</a>
+
+                <small class="text-muted d-block mt-2">
+                    Admin & Judge accounts are created by system administrator
+                </small>
             </div>
+
 
             <div class="text-center mt-3">
                 <small class="text-muted">&copy; <?php echo date('Y'); ?> Justice & Institutions</small>
