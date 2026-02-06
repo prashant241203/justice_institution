@@ -61,4 +61,4 @@ password
 role
 created_at
 
-mere projects me itna tables he and isme kahi sare tables he jisme data nahi he wo pure blank he jesi ke audit_log, case_status_history , pattern_flag , reports iske liye muje muje data chahiye 
+to ye mere sare table he inme kya chnages rahega wo batao 

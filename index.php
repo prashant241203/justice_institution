@@ -270,7 +270,30 @@ body { background:#f5f7fb; }
 
   <div class="col-12">
     <div class="card p-3">
-      <canvas id="caseChart"></canvas>
+      <div class="row mb-3">
+  <div class="col-md-3">
+    <select id="filterMonth" class="form-select">
+      <?php
+      for ($m = 1; $m <= 12; $m++) {
+        $selected = ($m == date('n')) ? 'selected' : '';
+        echo "<option value='$m' $selected>" . date('F', mktime(0,0,0,$m,1)) . "</option>";
+      }
+      ?>
+    </select>
+  </div>
+
+  <div class="col-md-3">
+    <select id="filterYear" class="form-select">
+      <?php
+      for ($y = date('Y'); $y >= date('Y') - 5; $y--) {
+        echo "<option value='$y'>$y</option>";
+      }
+      ?>
+    </select>
+  </div>
+</div>
+
+      <canvas id="monthlyCaseChart"></canvas>
     </div>
   </div>
 </div>
@@ -688,32 +711,61 @@ else {
 </div>
 </div>
 
-<!-- ================= CHARTS ================= -->
 <script>
-const labels = <?= json_encode($caseTitles) ?>;
+  
+let monthlyChart;
 
-// Case Chart (Main)
-new Chart(document.getElementById('caseChart'), {
-  type:'bar',
-  data:{
-    labels,
-    datasets:[{
-      label:'Cases', 
-      data:labels.map(()=>1), 
-      backgroundColor:'#0a66c2'
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: false
-      }
-    }
-  }
-});
+function loadMonthlyChart(month, year) {
 
-// Status Distribution Pie Chart
+  fetch(`fetch_monthly_cases.php?month=${month}&year=${year}`)
+    .then(res => res.json())
+    .then(data => {
+        
+      const ctx = document.getElementById('monthlyCaseChart');
+
+      if (monthlyChart) monthlyChart.destroy();
+
+      monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Cases',
+            data: data.counts,
+            backgroundColor: '#0a66c2',
+            borderColor: '#0a66c2',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1 }
+            }
+          }
+        }
+      });
+    });
+}
+
+// dropdown events
+filterMonth.onchange = () =>
+  loadMonthlyChart(filterMonth.value, filterYear.value);
+
+filterYear.onchange = () =>
+  loadMonthlyChart(filterMonth.value, filterYear.value);
+
+// page load
+loadMonthlyChart(filterMonth.value, filterYear.value);
+
+
+  // ================= STATUS DISTRIBUTION =================
 new Chart(document.getElementById('statusChart'), {
   type: 'doughnut',
   data: {
@@ -727,14 +779,12 @@ new Chart(document.getElementById('statusChart'), {
   options: {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'bottom'
-      }
+      legend: { position: 'bottom' }
     }
   }
 });
 
-// Outcome Chart
+// ================= OUTCOME CHART =================
 <?php
 $outcomeLabels = array_keys($outcomeData);
 $outcomeCounts = array_values($outcomeData);
@@ -745,7 +795,7 @@ new Chart(document.getElementById('outcomeChart'), {
     labels: <?= json_encode($outcomeLabels) ?>,
     datasets: [{
       data: <?= json_encode($outcomeCounts) ?>,
-      backgroundColor: ['#dc3545', '#28a745', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14'],
+      backgroundColor: ['#dc3545','#28a745','#ffc107','#17a2b8','#6f42c1','#fd7e14'],
       borderWidth: 1
     }]
   },
@@ -754,20 +804,18 @@ new Chart(document.getElementById('outcomeChart'), {
     plugins: {
       legend: {
         position: 'bottom',
-        labels: {
-          boxWidth: 12
-        }
+        labels: { boxWidth: 12 }
       }
     }
   }
 });
 
-// Monthly Timeline Chart
+// ================= MONTHLY TIMELINE =================
 <?php
-$monthLabels = array_column($monthlyData, 'month');
-$monthOpen = array_column($monthlyData, 'open');
+$monthLabels  = array_column($monthlyData, 'month');
+$monthOpen    = array_column($monthlyData, 'open');
 $monthPending = array_column($monthlyData, 'pending');
-$monthClosed = array_column($monthlyData, 'closed');
+$monthClosed  = array_column($monthlyData, 'closed');
 ?>
 new Chart(document.getElementById('monthlyChart'), {
   type: 'line',
@@ -778,7 +826,7 @@ new Chart(document.getElementById('monthlyChart'), {
         label: 'Open Cases',
         data: <?= json_encode($monthOpen) ?>,
         borderColor: '#28a745',
-        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+        backgroundColor: 'rgba(40,167,69,0.1)',
         tension: 0.3,
         fill: true
       },
@@ -786,7 +834,7 @@ new Chart(document.getElementById('monthlyChart'), {
         label: 'Pending Cases',
         data: <?= json_encode($monthPending) ?>,
         borderColor: '#ffc107',
-        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+        backgroundColor: 'rgba(255,193,7,0.1)',
         tension: 0.3,
         fill: true
       },
@@ -794,7 +842,7 @@ new Chart(document.getElementById('monthlyChart'), {
         label: 'Closed Cases',
         data: <?= json_encode($monthClosed) ?>,
         borderColor: '#6c757d',
-        backgroundColor: 'rgba(108, 117, 125, 0.1)',
+        backgroundColor: 'rgba(108,117,125,0.1)',
         tension: 0.3,
         fill: true
       }
@@ -803,56 +851,19 @@ new Chart(document.getElementById('monthlyChart'), {
   options: {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'top'
-      }
+      legend: { position: 'top' }
     },
     scales: {
       y: {
         beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Number of Cases'
-        }
+        title: { display: true, text: 'Number of Cases' }
       }
     }
   }
 });
 
-// Pattern Detection Chart
-new Chart(document.getElementById('patternChart'), {
-  type:'line',
-  data:{
-    labels,
-    datasets:[{
-      label:'Pattern Flags', 
-      data:labels.map(()=>Math.floor(Math.random()*3)), 
-      borderColor:'#e81123',
-      backgroundColor: 'rgba(232, 17, 35, 0.1)',
-      tension: 0.3,
-      fill: true
-    }]
-  },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top'
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Pattern Flags Detected'
-        }
-      }
-    }
-  }
-});
+// ================= CASE LIST =================
 function loadCases(page = 1) {
-
   fetch("fetch_cases.php?page=" + page)
     .then(res => res.json())
     .then(data => {
@@ -863,18 +874,12 @@ function loadCases(page = 1) {
       tbody.innerHTML = "";
       pagination.innerHTML = "";
 
-      // No records
       if (data.cases.length === 0) {
         tbody.innerHTML = `
-          <tr>
-            <td colspan="5" class="text-center">
-              No cases found
-            </td>
-          </tr>`;
+          <tr><td colspan="5" class="text-center">No cases found</td></tr>`;
         return;
       }
 
-      // Table rows
       data.cases.forEach(c => {
         tbody.innerHTML += `
           <tr>
@@ -883,44 +888,31 @@ function loadCases(page = 1) {
             <td>${c.date_filed}</td>
             <td>${c.status}</td>
             <td>
-              <a href="add_hearing.php?case_id=${c.case_id}"
-                class="btn btn-sm btn-outline-primary">
-                Hearings
-              </a>
-
-              ${
-                c.hearing_count > 0 && c.status !== 'Closed'
-                ? `<a href="add_judgement.php?case_id=${c.case_id}"
-                    class="btn btn-sm btn-outline-success ms-1">
-                    Judgement
-                  </a>`
-                : ''
-              }
-           </td>
+              <a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-sm btn-outline-primary">Hearings</a>
+              ${c.hearing_count > 0 && c.status !== 'Closed'
+                ? `<a href="add_judgement.php?case_id=${c.case_id}" class="btn btn-sm btn-outline-success ms-1">Judgement</a>`
+                : ''}
+            </td>
           </tr>`;
       });
 
-      // Pagination buttons
       for (let i = 1; i <= data.pages; i++) {
         pagination.innerHTML += `
-          <li class="page-item ${i === page ? 'active' : ''}">
-            <a class="page-link"
-               href="javascript:void(0)"
-               onclick="loadCases(${i})">
-               ${i}
-            </a>
+          <li class="page-item ${i===page?'active':''}">
+            <a class="page-link" href="javascript:void(0)" onclick="loadCases(${i})">${i}</a>
           </li>`;
       }
     });
 }
 
-// First page auto load
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   loadCases(1);
+  loadHearings();
+  loadJudgements();
 });
 
+// ================= HEARINGS =================
 function loadHearings(page = 1) {
-
   fetch("fetch_hearings.php?page=" + page)
     .then(res => res.json())
     .then(data => {
@@ -932,12 +924,7 @@ function loadHearings(page = 1) {
       pagination.innerHTML = "";
 
       if (data.hearings.length === 0) {
-        body.innerHTML = `
-          <tr>
-            <td colspan="4" class="text-center">
-              No hearings scheduled yet.
-            </td>
-          </tr>`;
+        body.innerHTML = `<tr><td colspan="4" class="text-center">No hearings scheduled yet.</td></tr>`;
         return;
       }
 
@@ -950,63 +937,33 @@ function loadHearings(page = 1) {
             <td>${h.court_name}</td>
           </tr>`;
       });
-
-      for (let i = 1; i <= data.pages; i++) {
-        pagination.innerHTML += `
-          <li class="page-item">
-            <a class="page-link"
-               href="javascript:void(0)"
-               onclick="loadHearings(${i})">
-              ${i}
-            </a>
-          </li>`;
-      }
     });
 }
 
-/* Auto load */
-document.addEventListener("DOMContentLoaded", () => {
-  loadHearings();
-});
-
+// ================= JUDGEMENTS =================
 function loadJudgements(page = 1) {
-
   fetch("fetch_judgements.php?page=" + page)
     .then(res => res.json())
     .then(data => {
 
       const body = document.getElementById("judgementBody");
-      const pagination = document.getElementById("judgementPagination");
-
       body.innerHTML = "";
-      pagination.innerHTML = "";
 
       if (data.judgements.length === 0) {
-        body.innerHTML = `
-          <tr>
-            <td colspan="5" class="text-center">
-              No judgements issued yet.
-            </td>
-          </tr>`;
+        body.innerHTML = `<tr><td colspan="5" class="text-center">No judgements issued yet.</td></tr>`;
         return;
       }
 
       data.judgements.forEach(j => {
 
         let badge = 'bg-secondary';
-
-        if (['Convicted','Guilty','Imprisonment','Fine Imposed'].includes(j.outcome))
-          badge = 'bg-danger';
-        else if (['Acquitted','Not Guilty','Appeal Allowed'].includes(j.outcome))
-          badge = 'bg-success';
-        else if (['Dismissed','Case Withdrawn','Appeal Dismissed'].includes(j.outcome))
-          badge = 'bg-warning text-dark';
-        else if (['Settlement','Probation'].includes(j.outcome))
-          badge = 'bg-info';
+        if (['Convicted','Guilty','Imprisonment','Fine Imposed'].includes(j.outcome)) badge='bg-danger';
+        else if (['Acquitted','Not Guilty','Appeal Allowed'].includes(j.outcome)) badge='bg-success';
+        else if (['Dismissed','Case Withdrawn','Appeal Dismissed'].includes(j.outcome)) badge='bg-warning text-dark';
+        else if (['Settlement','Probation'].includes(j.outcome)) badge='bg-info';
 
         let summary = j.summary ?? '';
-        if (summary.length > 50) summary = summary.substring(0,50) + '...';
-        if (summary === '') summary = '<span class="text-muted">No summary</span>';
+        if (summary.length > 50) summary = summary.substring(0,50)+'...';
 
         body.innerHTML += `
           <tr>
@@ -1014,37 +971,21 @@ function loadJudgements(page = 1) {
             <td>${j.case_id}</td>
             <td>${j.judgement_date}</td>
             <td><span class="badge ${badge}">${j.outcome}</span></td>
-            <td>${summary}</td>
+            <td>${summary || '<span class="text-muted">No summary</span>'}</td>
           </tr>`;
       });
-
-      for (let i = 1; i <= data.pages; i++) {
-        pagination.innerHTML += `
-          <li class="page-item">
-            <a class="page-link"
-               href="javascript:void(0)"
-               onclick="loadJudgements(${i})">
-              ${i}
-            </a>
-          </li>`;
-      }
     });
 }
 
-/* Auto load */
-document.addEventListener("DOMContentLoaded", () => {
-  loadJudgements();
-});
-
+// ================= PATTERN =================
 function runPatternDetection(){
   fetch("run_pattern.php")
     .then(res => res.json())
     .then(data => {
       alert(data.message);
-      location.reload(); // dashboard + charts refresh
+      location.reload();
     });
 }
-
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
