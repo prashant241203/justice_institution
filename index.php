@@ -1,18 +1,20 @@
 <?php
 session_start();
 require_once("auth_check.php");
+requireLogin();
+requireRoles(['admin','judge','lawyer','clerk','analyst']);
 require_once("connect.php");
-
-if(!isset($_SESSION['logged_in'])) {
-    header("Location: login.php");
-    exit;
-}
-
 
 /* =====================
    CSV EXPORT FUNCTIONS
 ===================== */
 if (isset($_GET['export'])) {
+
+  if (!can('export_data')) {
+        header("Location: access_denied.php");
+        exit;
+    }
+
     $type = $_GET['export'];
     
     switch($type) {
@@ -30,40 +32,51 @@ if (isset($_GET['export'])) {
             exit;
     }
 }
-
 function exportCSV($table, $filename) {
     global $conn;
-    
-    $query = "SELECT * FROM $table";
+
+    /* =========================
+       1️⃣ WHITELIST TABLES
+    ========================== */
+    $allowedTables = ['cases', 'hearings', 'judgements'];
+
+    if (!in_array($table, $allowedTables, true)) {
+        die("Invalid export request");
+    }
+
+    /* =========================
+       2️⃣ SAFE QUERY
+    ========================== */
+    $query = "SELECT * FROM `$table`";
     $result = mysqli_query($conn, $query);
-    
+
     if (!$result) {
         die("Query failed: " . mysqli_error($conn));
     }
-    
-    // Set headers for CSV download
+
+    /* =========================
+       3️⃣ CSV OUTPUT
+    ========================== */
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
-    
+
     $output = fopen('php://output', 'w');
-    
-    // Add headers
-    $fields = mysqli_fetch_fields($result);
-    $headers = array();
-    foreach ($fields as $field) {
+
+    // Column headers
+    foreach (mysqli_fetch_fields($result) as $field) {
         $headers[] = $field->name;
     }
     fputcsv($output, $headers);
-    
-    // Add data rows
-    mysqli_data_seek($result, 0);
+
+    // Rows
     while ($row = mysqli_fetch_assoc($result)) {
         fputcsv($output, $row);
     }
-    
+
     fclose($output);
     exit;
 }
+
 
 /* =====================
    REPORT DATA
@@ -112,6 +125,12 @@ for($i = 5; $i >= 0; $i--) {
    ADD CASE - FIXED for varchar case_id
 ===================== */
 if (isset($_POST['add_case'])) {
+
+    if (!can('add_case')) {
+        header("Location: access_denied.php");
+        exit;
+    }
+
     $title  = $_POST['title'];
     $date   = $_POST['date_filed'];
     $status = $_POST['status'];
@@ -127,10 +146,12 @@ if (isset($_POST['add_case'])) {
         $case_id = 'C001';
     }
 
-    mysqli_query($conn,
-        "INSERT INTO cases (case_id, title, date_filed, status)
-         VALUES ('$case_id', '$title', '$date', '$status')"
+      $stmt = $conn->prepare(
+      "INSERT INTO cases (case_id, title, date_filed, status)
+      VALUES (?, ?, ?, ?)"
     );
+    $stmt->bind_param("ssss", $case_id, $title, $date, $status);
+    $stmt->execute();
 
     header("Location: index.php");
     exit;
@@ -152,7 +173,7 @@ $patternFlags    = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM pat
    TABLE DATA
 ===================== */
 // Only get cases with valid case_id
-$cases = mysqli_query( $conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DCE ");
+$cases = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC");
 $hearings   = mysqli_query($conn,"SELECT * FROM hearings ORDER BY hearing_id DESC");
 $judgements = mysqli_query($conn,"SELECT * FROM judgements ORDER BY judgement_id DESC");
 
@@ -199,7 +220,7 @@ body { background:#f5f7fb; }
     <h5 class="mb-0 me-auto">Justice & Institutions</h5>
     <div class="d-flex align-items-center">
       <?php
-      require_once("auth_check.php");
+      // require_once("auth_check.php");
       $user = getUserInfo();
       ?>
       <span class="text-light me-3">
@@ -248,9 +269,11 @@ body { background:#f5f7fb; }
 
   <!-- QUICK ACTIONS -->
   <div class="d-grid gap-2">
-    <button class="ms-btn" data-bs-toggle="modal" data-bs-target="#addCase">
-      + Add Case
-    </button>
+      <?php if (can('add_case')): ?>
+        <button data-bs-toggle="modal" data-bs-target="#addCase">
+          + Add Case
+        </button>
+      <?php endif; ?>
     <button class="btn btn-outline-primary" onclick="runPatternDetection()">
       ▶ Run Pattern Detection
     </button>
@@ -345,7 +368,6 @@ body { background:#f5f7fb; }
     <!-- Pagination -->
     <ul class="pagination justify-content-center mt-3"
         id="casePagination"></ul>
-
   </div>
 </section>
 
@@ -622,7 +644,7 @@ body { background:#f5f7fb; }
     <div class="card">
       <div class="card-body">
         <h6>Pattern Detection Analysis</h6>
-        <canvas id="patternChart"></canvas>
+        <canvas id="patternChart" width="600" height="400"></canvas>
       </div>
     </div>
   </div>
@@ -762,7 +784,7 @@ filterYear.onchange = () =>
   loadMonthlyChart(filterMonth.value, filterYear.value);
 
 // page load
-loadMonthlyChart(filterMonth.value, filterYear.value);
+
 
 
   // ================= STATUS DISTRIBUTION =================
@@ -862,21 +884,18 @@ new Chart(document.getElementById('monthlyChart'), {
   }
 });
 
-// ================= CASE LIST =================
+
 function loadCases(page = 1) {
   fetch("fetch_cases.php?page=" + page)
     .then(res => res.json())
     .then(data => {
-
       const tbody = document.getElementById("caseBody");
       const pagination = document.getElementById("casePagination");
-
       tbody.innerHTML = "";
       pagination.innerHTML = "";
 
       if (data.cases.length === 0) {
-        tbody.innerHTML = `
-          <tr><td colspan="5" class="text-center">No cases found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">No cases found</td></tr>`;
         return;
       }
 
@@ -889,34 +908,37 @@ function loadCases(page = 1) {
             <td>${c.status}</td>
             <td>
               <a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-sm btn-outline-primary">Hearings</a>
-              ${c.hearing_count > 0 && c.status !== 'Closed'
-                ? `<a href="add_judgement.php?case_id=${c.case_id}" class="btn btn-sm btn-outline-success ms-1">Judgement</a>`
-                : ''}
             </td>
           </tr>`;
       });
 
+      // Pagination buttons
+      let prevPage = page > 1 ? page - 1 : 1;
+      let nextPage = page < data.pages ? page + 1 : data.pages;
+
+      pagination.innerHTML += `<li class="page-item ${page===1?'disabled':''}">
+                                 <a class="page-link" href="javascript:void(0)" onclick="loadCases(${prevPage})">Previous</a>
+                               </li>`;
+
       for (let i = 1; i <= data.pages; i++) {
-        pagination.innerHTML += `
-          <li class="page-item ${i===page?'active':''}">
-            <a class="page-link" href="javascript:void(0)" onclick="loadCases(${i})">${i}</a>
-          </li>`;
+        pagination.innerHTML += `<li class="page-item ${i===page?'active':''}">
+                                   <a class="page-link" href="javascript:void(0)" onclick="loadCases(${i})">${i}</a>
+                                 </li>`;
       }
+
+      pagination.innerHTML += `<li class="page-item ${page===data.pages?'disabled':''}">
+                                 <a class="page-link" href="javascript:void(0)" onclick="loadCases(${nextPage})">Next</a>
+                               </li>`;
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  loadCases(1);
-  loadHearings();
-  loadJudgements();
-});
+
 
 // ================= HEARINGS =================
 function loadHearings(page = 1) {
   fetch("fetch_hearings.php?page=" + page)
     .then(res => res.json())
     .then(data => {
-
       const body = document.getElementById("hearingBody");
       const pagination = document.getElementById("hearingPagination");
 
@@ -937,6 +959,24 @@ function loadHearings(page = 1) {
             <td>${h.court_name}</td>
           </tr>`;
       });
+
+      // Pagination
+      let prevPage = page > 1 ? page - 1 : 1;
+      let nextPage = page < data.pages ? page + 1 : data.pages;
+
+      pagination.innerHTML += `<li class="page-item ${page===1?'disabled':''}">
+                                 <a class="page-link" href="javascript:void(0)" onclick="loadHearings(${prevPage})">Previous</a>
+                               </li>`;
+
+      for (let i = 1; i <= data.pages; i++) {
+        pagination.innerHTML += `<li class="page-item ${i===page?'active':''}">
+                                   <a class="page-link" href="javascript:void(0)" onclick="loadHearings(${i})">${i}</a>
+                                 </li>`;
+      }
+
+      pagination.innerHTML += `<li class="page-item ${page===data.pages?'disabled':''}">
+                                 <a class="page-link" href="javascript:void(0)" onclick="loadHearings(${nextPage})">Next</a>
+                               </li>`;
     });
 }
 
@@ -945,9 +985,11 @@ function loadJudgements(page = 1) {
   fetch("fetch_judgements.php?page=" + page)
     .then(res => res.json())
     .then(data => {
-
       const body = document.getElementById("judgementBody");
+      const pagination = document.getElementById("judgementPagination");
+
       body.innerHTML = "";
+      pagination.innerHTML = "";
 
       if (data.judgements.length === 0) {
         body.innerHTML = `<tr><td colspan="5" class="text-center">No judgements issued yet.</td></tr>`;
@@ -955,35 +997,116 @@ function loadJudgements(page = 1) {
       }
 
       data.judgements.forEach(j => {
-
-        let badge = 'bg-secondary';
-        if (['Convicted','Guilty','Imprisonment','Fine Imposed'].includes(j.outcome)) badge='bg-danger';
-        else if (['Acquitted','Not Guilty','Appeal Allowed'].includes(j.outcome)) badge='bg-success';
-        else if (['Dismissed','Case Withdrawn','Appeal Dismissed'].includes(j.outcome)) badge='bg-warning text-dark';
-        else if (['Settlement','Probation'].includes(j.outcome)) badge='bg-info';
-
         let summary = j.summary ?? '';
-        if (summary.length > 50) summary = summary.substring(0,50)+'...';
+        if(summary.length > 50) summary = summary.substring(0,50)+'...';
 
         body.innerHTML += `
           <tr>
             <td>${j.judgement_id}</td>
             <td>${j.case_id}</td>
             <td>${j.judgement_date}</td>
-            <td><span class="badge ${badge}">${j.outcome}</span></td>
+            <td>${j.outcome}</td>
             <td>${summary || '<span class="text-muted">No summary</span>'}</td>
           </tr>`;
       });
+
+      // Pagination
+      let prevPage = page > 1 ? page - 1 : 1;
+      let nextPage = page < data.pages ? page + 1 : data.pages;
+
+      pagination.innerHTML += `<li class="page-item ${page===1?'disabled':''}">
+                                 <a class="page-link" href="javascript:void(0)" onclick="loadJudgements(${prevPage})">Previous</a>
+                               </li>`;
+
+      for (let i = 1; i <= data.pages; i++) {
+        pagination.innerHTML += `<li class="page-item ${i===page?'active':''}">
+                                   <a class="page-link" href="javascript:void(0)" onclick="loadJudgements(${i})">${i}</a>
+                                 </li>`;
+      }
+
+      pagination.innerHTML += `<li class="page-item ${page===data.pages?'disabled':''}">
+                                 <a class="page-link" href="javascript:void(0)" onclick="loadJudgements(${nextPage})">Next</a>
+                               </li>`;
     });
 }
 
+let patternChart;
+
+function loadPatternChart() {
+    fetch("fetch_pattern_flags.php")
+        .then(res => res.json())
+        .then(data => {
+            const ctx = document.getElementById('patternChart').getContext('2d');
+
+            if(patternChart) patternChart.destroy();
+
+            // Gradient fill
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(220,53,69,0.5)');
+            gradient.addColorStop(1, 'rgba(220,53,69,0)');
+
+            // Add small random offset to same values for visual variation
+            const jitteredData = data.counts.map(v => v + (Math.random()*0.2 - 0.1));
+
+            patternChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Pattern Flags',
+                        data: jitteredData,
+                        borderColor: '#dc3545',
+                        backgroundColor: gradient,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#dc3545',
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#ff6b81'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    animation: {
+                        duration: 1200,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(err => console.error("Pattern Chart Error:", err));
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadPatternChart();
+  loadCases(1);
+  loadHearings(1);
+  loadJudgements(1);
+  loadMonthlyChart(filterMonth.value, filterYear.value);
+});
 // ================= PATTERN =================
 function runPatternDetection(){
   fetch("run_pattern.php")
     .then(res => res.json())
     .then(data => {
       alert(data.message);
-      location.reload();
+      loadPatternChart(); // chart update kare bina page reload ke
+     
     });
 }
 </script>

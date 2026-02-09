@@ -1,11 +1,20 @@
 <?php
 session_start();
-if(!isset($_SESSION['logged_in'])) {
+
+require_once("connect.php");      // 1️⃣ DB
+require_once("auth_check.php");   // 2️⃣ auth + can()
+
+// 3️⃣ LOGIN CHECK
+if (!isset($_SESSION['logged_in'])) {
     header("Location: login.php");
     exit;
 }
-require_once("auth_check.php");
-require_once("connect.php");
+
+// 4️⃣ ROLE / PERMISSION CHECK
+if (!can('add_hearing')) {
+    header("Location: access_denied.php");
+    exit;
+}
 
 /* =====================
    JUDGE ADDS JUDGEMENT

@@ -1,30 +1,24 @@
 <?php
 require_once("connect.php");
 
-$page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit  = 5;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 5;
 $offset = ($page - 1) * $limit;
 
-/* Total hearings */
-$totalQuery = mysqli_query($conn, "SELECT COUNT(*) FROM hearings");
-$totalRows  = mysqli_fetch_row($totalQuery)[0];
-$totalPages = ceil($totalRows / $limit);
+// Total records
+$totalQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM hearings");
+$totalRow = mysqli_fetch_assoc($totalQuery);
+$totalPages = ceil($totalRow['total'] / $limit);
 
-/* Fetch paginated hearings */
-$query = mysqli_query(
-  $conn,
-  "SELECT * FROM hearings
-   ORDER BY hearing_id DESC
-   LIMIT $limit OFFSET $offset"
-);
+// Current page records
+$dataQuery = mysqli_query($conn, "SELECT * FROM hearings ORDER BY hearing_id DESC LIMIT $limit OFFSET $offset");
 
 $hearings = [];
-
-while ($row = mysqli_fetch_assoc($query)) {
-  $hearings[] = $row;
+while($row = mysqli_fetch_assoc($dataQuery)) {
+    $hearings[] = $row;
 }
 
 echo json_encode([
-  "hearings" => $hearings,
-  "pages" => $totalPages
+    'hearings' => $hearings,
+    'pages' => $totalPages
 ]);

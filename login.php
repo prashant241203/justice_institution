@@ -1,49 +1,54 @@
 <?php
+
 session_start();
-require_once("connect.php");
+require_once "connect.php";
 
 // Redirect if already logged in
-if(isset($_SESSION['user_id'])) {
+if(isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     header("Location: index.php");
     exit;
 }
 
 $error = '';
 if(isset($_POST['login'])) {
-    $password = trim($_POST['password']); // plain password
-    $email = trim(mysqli_real_escape_string($conn, $_POST['email']));   
 
-    $query = "SELECT * FROM users WHERE email='$email' LIMIT 1";
+    $email    = trim(mysqli_real_escape_string($conn, $_POST['email']));
+    $password = trim($_POST['password']);
+
+    $query  = "SELECT * FROM users WHERE email='$email' LIMIT 1";
     $result = mysqli_query($conn, $query);
 
     if($result && mysqli_num_rows($result) === 1) {
+
         $user = mysqli_fetch_assoc($result);
-                if(!password_verify($password, $user['password'])) {
-                $error = "Invalid email or password!";
-                      } else {
 
-                if($user['status'] === 'pending') {
-                    $error = "Your account is pending admin approval.";
-                } 
-                elseif($user['status'] === 'rejected') {
-                    $error = "Your registration request was rejected. Please register again with a different role.";
-                } 
-                else {
-                    // APPROVED USER → LOGIN
-                    $_SESSION['user_id'] = $user['user_id'];
-                    $_SESSION['user_name'] = $user['name'];
-                    $_SESSION['user_email'] = $user['email'];
-                    $_SESSION['user_role'] = $user['role'];
-                    $_SESSION['logged_in'] = true;
-
-                    header("Location: index.php");
-                    exit;
-                }
+        if(!password_verify($password, $user['password'])) {
+            $error = "Invalid email or password!";
         }
+        elseif($user['status'] === 'pending') {
+            $error = "Your account is pending admin approval.";
+        }
+        elseif($user['status'] === 'rejected') {
+            $error = "Your registration request was rejected.";
+        }
+        else {
+          
+            $_SESSION['user_id']   = $user['user_id'];   
+            $_SESSION['user_name'] = $user['name'];
+            $_SESSION['user_email']= $user['email'];
+            $_SESSION['user_role'] = $user['role'];
+            $_SESSION['logged_in'] = true;
+
+            header("Location: index.php");
+            exit;
+        }
+
     } else {
         $error = "Invalid email or password!";
     }
 }
+
+
 ?>
 
 <!DOCTYPE html>

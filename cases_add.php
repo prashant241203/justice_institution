@@ -1,11 +1,20 @@
 <?php
+session_start();
+require_once("auth_check.php");
+require_once("connect.php");
 
-require_once 'connect.php';
+if (!can('add_case')) {
+    header("Location: access_denied.php");
+    exit;
+}
+
 
 if (isset($_POST['save'])) {
-  $title = $_POST['title'];
-  $date  = $_POST['date_filed'];
-  $status = $_POST['status'];
+  
+$title  = mysqli_real_escape_string($conn, $_POST['title']);
+$date   = mysqli_real_escape_string($conn, $_POST['date_filed']);
+$status = mysqli_real_escape_string($conn, $_POST['status']);
+
 
   mysqli_query($conn,
     "INSERT INTO cases (title, date_filed, status)

@@ -1,14 +1,17 @@
 <?php
+date_default_timezone_set('Asia/Kolkata');
 $today = date('Y-m-d');
 
 $judgeId = $_SESSION['user_id'];
-date_default_timezone_set('Asia/Kolkata');
+
+
+
 $todayHearings = mysqli_query($conn, "
     SELECT h.*, c.title
     FROM hearings h
     JOIN cases c ON h.case_id = c.case_id
     WHERE c.judge_id = '$judgeId'
-    AND h.hearing_date = CURDATE()
+    AND DATE(h.hearing_date) = '$today'
 ");
 
 ?>
