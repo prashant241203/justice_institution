@@ -2,29 +2,66 @@
 require_once("connect.php");
 $message = '';
 
-if(isset($_POST['register'])) {
-    $name = trim(mysqli_real_escape_string($conn, $_POST['name']));
-    $email = trim(mysqli_real_escape_string($conn, $_POST['email']));
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $role = 'analyst'; 
+if (isset($_POST['register'])) {
 
-   $check = mysqli_query($conn,
-        "SELECT user_id, status FROM users WHERE email='$email' AND status != 'rejected'"
-    );
-    if(mysqli_num_rows($check) > 0) {
-        $message = "Email already registered!";
-    } else {
-        $query = "INSERT INTO users (name, email, password, role, status)
-                  VALUES ('$name', '$email', '$password', '$role', 'pending')";
-        if(mysqli_query($conn, $query)) {
-            header("Location: login.php?pending=1");
-            exit;
+    // Sanitize inputs
+    $name = trim(mysqli_real_escape_string($conn, $_POST['name'] ?? ''));
+    $email = trim(mysqli_real_escape_string($conn, $_POST['email'] ?? ''));
+    $password_raw = $_POST['password'] ?? '';
+
+    // ===============================
+    // ✅ SERVER SIDE VALIDATION
+    // ===============================
+
+    if (empty($name)) {
+        $message = "Full name is required!";
+    }
+    elseif (strlen($name) < 3) {
+        $message = "Full name must be at least 3 characters long!";
+    }
+    elseif (empty($email)) {
+        $message = "Email address is required!";
+    }
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $message = "Please enter a valid email address!";
+    }
+    elseif (empty($password_raw)) {
+        $message = "Password is required!";
+    }
+    elseif (strlen($password_raw) < 6) {
+        $message = "Password must be at least 6 characters long!";
+    }
+    else {
+
+        // Hash password
+        $password = password_hash($password_raw, PASSWORD_DEFAULT);
+        $role = 'analyst';
+
+        // Check duplicate email (except rejected)
+        $check = mysqli_query(
+            $conn,
+            "SELECT user_id FROM users WHERE email='$email' AND status != 'rejected'"
+        );
+
+        if (mysqli_num_rows($check) > 0) {
+            $message = "Email already registered!";
         } else {
-            $message = "Registration failed!";
+
+            // Insert user
+            $query = "INSERT INTO users (name, email, password, role, status)
+                      VALUES ('$name', '$email', '$password', '$role', 'pending')";
+
+            if (mysqli_query($conn, $query)) {
+                header("Location: login.php?pending=1");
+                exit;
+            } else {
+                $message = "Registration failed! Please try again.";
+            }
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -96,19 +133,19 @@ body {
                 <div class="mb-3">
                     <label class="form-label">Full Name</label>
                     <input type="text" name="name" class="form-control"
-                           placeholder="Enter your full name" required>
+                           placeholder="Enter your full name" >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Email Address</label>
                     <input type="email" name="email" class="form-control"
-                           placeholder="Enter your email" required>
+                           placeholder="Enter your email" >
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Password</label>
                     <input type="password" name="password" class="form-control"
-                           placeholder="Create a password" required>
+                           placeholder="Create a password" >
                 </div>
 
                 <div class="d-grid gap-2">

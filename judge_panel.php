@@ -30,6 +30,7 @@ FROM cases c
 LEFT JOIN hearings h ON c.case_id = h.case_id
 LEFT JOIN judgements j ON c.case_id = j.case_id
 WHERE c.judge_id = '$judgeId'
+  AND c.status = 'Pending'
   AND j.case_id IS NULL
 GROUP BY c.case_id
 ORDER BY c.date_filed DESC

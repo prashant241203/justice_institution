@@ -1,54 +1,70 @@
 <?php
-
 session_start();
 require_once "connect.php";
 
 // Redirect if already logged in
-if(isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     header("Location: index.php");
     exit;
 }
 
 $error = '';
-if(isset($_POST['login'])) {
 
-    $email    = trim(mysqli_real_escape_string($conn, $_POST['email']));
-    $password = trim($_POST['password']);
+if (isset($_POST['login'])) {
 
-    $query  = "SELECT * FROM users WHERE email='$email' LIMIT 1";
-    $result = mysqli_query($conn, $query);
+    // Sanitize inputs
+    $email    = trim(mysqli_real_escape_string($conn, $_POST['email'] ?? ''));
+    $password = $_POST['password'] ?? '';
 
-    if($result && mysqli_num_rows($result) === 1) {
+    // ===============================
+    // ✅ SERVER SIDE VALIDATION
+    // ===============================
 
-        $user = mysqli_fetch_assoc($result);
+    if (empty($email)) {
+        $error = "Email address is required!";
+    }
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Please enter a valid email address!";
+    }
+    elseif (empty($password)) {
+        $error = "Password is required!";
+    }
+    else {
+        // Fetch user
+        $query  = "SELECT * FROM users WHERE email='$email' LIMIT 1";
+        $result = mysqli_query($conn, $query);
 
-        if(!password_verify($password, $user['password'])) {
+        if ($result && mysqli_num_rows($result) === 1) {
+
+            $user = mysqli_fetch_assoc($result);
+
+            // Password check
+            if (!password_verify($password, $user['password'])) {
+                $error = "Invalid email or password!";
+            }
+            elseif ($user['status'] === 'pending') {
+                $error = "Your account is pending admin approval.";
+            }
+            elseif ($user['status'] === 'rejected') {
+                $error = "Your registration request was rejected.";
+            }
+            else {
+          
+                $_SESSION['user_id']    = $user['user_id'];
+                $_SESSION['user_name']  = $user['name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_role']  = $user['role'];
+                $_SESSION['logged_in']  = true;
+
+                header("Location: index.php");
+                exit;
+            }
+
+        } else {
             $error = "Invalid email or password!";
         }
-        elseif($user['status'] === 'pending') {
-            $error = "Your account is pending admin approval.";
-        }
-        elseif($user['status'] === 'rejected') {
-            $error = "Your registration request was rejected.";
-        }
-        else {
-          
-            $_SESSION['user_id']   = $user['user_id'];   
-            $_SESSION['user_name'] = $user['name'];
-            $_SESSION['user_email']= $user['email'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['logged_in'] = true;
-
-            header("Location: index.php");
-            exit;
-        }
-
-    } else {
-        $error = "Invalid email or password!";
     }
 }
-
-
 ?>
 
 <!DOCTYPE html>
@@ -127,14 +143,14 @@ if(isset($_POST['login'])) {
                 <div class="mb-3">
                     <label class="form-label">Email Address</label>
                     <input type="email" name="email" class="form-control" 
-                           placeholder="Enter your email" required 
+                           placeholder="Enter your email"  
                            value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
                 </div>
                     
                 <div class="mb-3">
                     <label class="form-label">Password</label>
                     <input type="password" name="password" class="form-control" 
-                           placeholder="Enter your password" required>
+                           placeholder="Enter your password" >
                 </div>
                 
                 <div class="d-grid gap-2">

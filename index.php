@@ -658,14 +658,15 @@ body { background:#f5f7fb; }
 
     <table class="table table-bordered table-sm mt-2">
       <thead>
-        <tr>
-          <th>Case ID</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Date</th>
-        </tr>
+          <tr>
+            <th>Case</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
       </thead>
-      <tbody>
+      <tbody id="patternBody">
         <?php
 $pf = mysqli_query($conn,"
     SELECT case_id, flag_type, description, created_at
@@ -702,6 +703,8 @@ else {
 
       </tbody>
     </table>
+   <ul class="pagination pagination-sm justify-content-center"
+    id="patternPagination"></ul>
   </div>
 </section>
 
@@ -898,19 +901,32 @@ function loadCases(page = 1) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center">No cases found</td></tr>`;
         return;
       }
+        
+     data.cases.forEach(c => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${c.case_id}</td>
+        <td>${c.title}</td>
+        <td>${c.date_filed}</td>
+        <td>${c.status}</td>
+        <td>
+          <a href="add_hearing.php?case_id=${c.case_id}"
+             class="btn btn-sm btn-outline-primary mb-1">
+             Hearings
+          </a>
 
-      data.cases.forEach(c => {
-        tbody.innerHTML += `
-          <tr>
-            <td>${c.case_id}</td>
-            <td>${c.title}</td>
-            <td>${c.date_filed}</td>
-            <td>${c.status}</td>
-            <td>
-              <a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-sm btn-outline-primary">Hearings</a>
-            </td>
-          </tr>`;
-      });
+          ${
+            data.is_judge && c.can_judgement
+            ? `<a href="add_judgement.php?case_id=${c.case_id}"
+                 class="btn btn-sm btn-success ms-1">
+                 Judgement
+               </a>`
+            : ''
+          }
+        </td>
+      </tr>`;
+});
+
 
       // Pagination buttons
       let prevPage = page > 1 ? page - 1 : 1;
@@ -1030,85 +1046,116 @@ function loadJudgements(page = 1) {
     });
 }
 
+function loadPatternList(page = 1) {
+  fetch("fetch_pattern_list.php?page=" + page)
+    .then(res => res.json())
+    .then(data => {
+
+      const body = document.getElementById("patternBody");
+      const pag  = document.getElementById("patternPagination");
+
+      body.innerHTML = "";
+      pag.innerHTML  = "";
+
+      if (data.patterns.length === 0) {
+        body.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-muted">
+              No pattern flags detected
+            </td>
+          </tr>`;
+        return;
+      }
+
+      data.patterns.forEach(p => {
+        body.innerHTML += `
+          <tr>
+            <td>${p.case_id}<br><small>${p.title}</small></td>
+            <td><span class="badge bg-danger">${p.flag_type}</span></td>
+            <td>${p.description}</td>
+            <td>${p.status}</td>
+            <td>${p.created_at}</td>
+          </tr>`;
+      });
+
+      // pagination
+      for (let i = 1; i <= data.pages; i++) {
+        pag.innerHTML += `
+          <li class="page-item ${i === data.current ? 'active' : ''}">
+            <a class="page-link" href="javascript:void(0)"
+               onclick="loadPatternList(${i})">${i}</a>
+          </li>`;
+      }
+    });
+}
+
+
+
 let patternChart;
 
 function loadPatternChart() {
-    fetch("fetch_pattern_flags.php")
+    fetch("fetch_pattern_summary.php")
         .then(res => res.json())
         .then(data => {
+              if (!data.labels || data.labels.length === 0) {
+            document.getElementById('patternChart').style.display = 'none';
+            return;
+        }
+        document.getElementById('patternChart').style.display = 'block';
             const ctx = document.getElementById('patternChart').getContext('2d');
 
             if(patternChart) patternChart.destroy();
 
-            // Gradient fill
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(220,53,69,0.5)');
-            gradient.addColorStop(1, 'rgba(220,53,69,0)');
-
-            // Add small random offset to same values for visual variation
-            const jitteredData = data.counts.map(v => v + (Math.random()*0.2 - 0.1));
-
             patternChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: data.labels,
                     datasets: [{
-                        label: 'Pattern Flags',
-                        data: jitteredData,
-                        borderColor: '#dc3545',
-                        backgroundColor: gradient,
-                        tension: 0.4,
-                        fill: true,
-                        pointRadius: 6,
-                        pointBackgroundColor: '#dc3545',
-                        pointHoverRadius: 8,
-                        pointHoverBackgroundColor: '#ff6b81'
+                        label: 'Active Pattern Flags',
+                        data: data.counts,
+                        borderRadius: 10
                     }]
                 },
                 options: {
                     responsive: true,
-                    animation: {
-                        duration: 1200,
-                        easing: 'easeOutQuart'
-                    },
                     plugins: {
-                        legend: { display: true, position: 'top' },
-                        tooltip: { mode: 'index', intersect: false }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.raw} cases`
+                            }
+                        }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { stepSize: 1 },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        },
-                        x: {
-                            grid: { color: 'rgba(0,0,0,0.05)' }
+                            ticks: { stepSize: 1 }
                         }
                     }
                 }
             });
-        })
-        .catch(err => console.error("Pattern Chart Error:", err));
+        });
 }
 
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadPatternChart();
-  loadCases(1);
-  loadHearings(1);
-  loadJudgements(1);
-  loadMonthlyChart(filterMonth.value, filterYear.value);
-});
 // ================= PATTERN =================
 function runPatternDetection(){
   fetch("run_pattern.php")
     .then(res => res.json())
     .then(data => {
       alert(data.message);
-      loadPatternChart(); // chart update kare bina page reload ke
-     
+      loadPatternChart();
+      loadPatternList(1);
     });
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadPatternChart();
+  loadCases(1);
+  loadHearings(1);
+  loadJudgements(1);
+   loadPatternList(1);
+  loadMonthlyChart(filterMonth.value, filterYear.value);
+});
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
