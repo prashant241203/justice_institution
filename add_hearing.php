@@ -15,9 +15,10 @@ if (!isset($_SESSION['logged_in'])) {
 /* =====================
    ROLE & PERMISSION CHECK
 ===================== */
-if ($_SESSION['user_role'] !== 'judge') {
-    die("Only Judge can schedule hearings");
-}
+// if ($_SESSION['user_role'] !== 'judge') {
+//     header('Location:access_denied.php');
+//     die("Only Judge and Admin can schedule hearings");
+// }
 
 if (!can('add_hearing')) {
     header("Location: access_denied.php");
@@ -67,7 +68,7 @@ if (isset($_POST['schedule_hearing'])) {
          ORDER BY CAST(SUBSTRING(hearing_id, 2) AS UNSIGNED) DESC 
          LIMIT 1"
     );
-
+        
     $lastHearing = mysqli_fetch_assoc($lastHearingQuery);
 
     if ($lastHearing && preg_match('/^H(\d+)$/', $lastHearing['hearing_id'], $matches)) {

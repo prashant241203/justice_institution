@@ -99,7 +99,7 @@ function can($action) {
         'add_case'        => ['admin', 'clerk'],
         'edit_case'       => ['admin', 'clerk'],
         'delete_case'     => ['admin'],
-        'add_hearing'     => ['admin', 'judge', 'clerk'],
+        'add_hearing'     => ['admin', 'judge'],
         'add_judgement'   => ['admin', 'judge'],
         'manage_users'    => ['admin'],
         'export_data'     => ['admin', 'analyst','judge'],

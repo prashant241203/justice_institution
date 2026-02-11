@@ -894,6 +894,7 @@ function loadCases(page = 1) {
     .then(data => {
       const tbody = document.getElementById("caseBody");
       const pagination = document.getElementById("casePagination");
+
       tbody.innerHTML = "";
       pagination.innerHTML = "";
 
@@ -901,31 +902,33 @@ function loadCases(page = 1) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center">No cases found</td></tr>`;
         return;
       }
-        
-     data.cases.forEach(c => {
-    tbody.innerHTML += `
-      <tr>
-        <td>${c.case_id}</td>
-        <td>${c.title}</td>
-        <td>${c.date_filed}</td>
-        <td>${c.status}</td>
-        <td>
-          <a href="add_hearing.php?case_id=${c.case_id}"
-             class="btn btn-sm btn-outline-primary mb-1">
-             Hearings
-          </a>
 
-          ${
-            data.is_judge && c.can_judgement
-            ? `<a href="add_judgement.php?case_id=${c.case_id}"
-                 class="btn btn-sm btn-success ms-1">
-                 Judgement
-               </a>`
-            : ''
-          }
-        </td>
-      </tr>`;
-});
+      data.cases.forEach(c => {
+        let button = '';
+        
+        if(c.status === 'Open') {
+            // Open → Always Add Hearing
+            button = `<a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-primary btn-sm">Add Hearing</a>`;
+        } else if(c.status === 'Pending') {
+            // Pending → Add Hearing if no hearing exists, else View
+            button = c.has_hearing
+                ? `<a href="view_hearing.php?case_id=${c.case_id}" class="btn btn-secondary btn-sm">View Hearing</a>`
+                : `<a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-primary btn-sm">Add Hearing</a>`;
+        } else if(c.status === 'Closed') {
+            // Closed → Always View Hearing
+            button = `<a href="view_hearing.php?case_id=${c.case_id}" class="btn btn-secondary btn-sm">View Hearing</a>`;
+        }
+        
+        document.getElementById("caseBody").innerHTML += `
+            <tr>
+                <td>${c.case_id}</td>
+                <td>${c.title}</td>
+                <td>${c.date_filed}</td>
+                <td>${c.status}</td>
+                <td>${button}</td>
+            </tr>
+        `;
+    });
 
 
       // Pagination buttons
@@ -937,7 +940,7 @@ function loadCases(page = 1) {
                                </li>`;
 
       for (let i = 1; i <= data.pages; i++) {
-        pagination.innerHTML += `<li class="page-item ${i===page?'active':''}">
+        pagination.innerHTML += `<li class="page-item ${i===data.current?'active':''}">
                                    <a class="page-link" href="javascript:void(0)" onclick="loadCases(${i})">${i}</a>
                                  </li>`;
       }
