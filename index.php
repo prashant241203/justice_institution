@@ -257,7 +257,7 @@ body { background:#f5f7fb; }
 
 <!-- ================= SIDEBAR ================= -->
 <nav class="col-lg-2 sidebar p-3">
-  <h6>Navigation</h6>
+  <!-- <h6>Navigation</h6> -->
   <ul class="nav flex-column mb-4">
     <li class="nav-item"><a class="nav-link active" href="#dashboard">Dashboard</a></li>
     <li class="nav-item"><a class="nav-link" href="#caseMaster">Case Master</a></li>
@@ -321,8 +321,7 @@ body { background:#f5f7fb; }
     </select>
   </div>
 </div>
-
-      <canvas id="monthlyCaseChart"></canvas>
+      <canvas id="monthlyCaseChart" ></canvas>
     </div>
   </div>
 </div>
@@ -783,16 +782,16 @@ function loadMonthlyChart(month, year) {
       if (monthlyChart) monthlyChart.destroy();
 
       monthlyChart = new Chart(ctx, {
-        type: 'bar',
+       type: 'line',
         data: {
-          labels: data.labels,
+          labels: data.labels, // keeps month names
           datasets: [{
-            label: 'Cases',
-            data: data.counts,
-            backgroundColor: '#0a66c2',
+            label: 'Cases Filed',
+            data: data.counts,  // monthly totals
             borderColor: '#0a66c2',
-            borderWidth: 1,
-            borderRadius: 6
+            backgroundColor: 'rgba(10,102,194,0.1)', // light shaded area
+            tension: 0.3,       // smooth curve
+            fill: true
           }]
         },
         options: {
