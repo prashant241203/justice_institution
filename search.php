@@ -246,19 +246,23 @@ if(isset($_GET['search'])) {
                                                     </td>
                                                     <td>
                                                         <div class="btn-group btn-group-sm">
-                                                            <a href="view_case.php?case_id=<?php echo urlencode($case['case_id']); ?>" 
-                                                               class="btn btn-info" title="View Details">
-                                                               <i class="bi bi-eye"></i>
-                                                            </a>
-                                                            <a href="add_hearing.php?case_id=<?php echo urlencode($case['case_id']); ?>" 
-                                                               class="btn btn-primary" title="Schedule Hearing">
-                                                               <i class="bi bi-calendar-plus"></i>
-                                                            </a>
-                                                            <?php if($case['status'] != 'Closed'): ?>
-                                                                <a href="index.php#caseMaster" 
-                                                                   class="btn btn-success" title="Go to Case Master">
-                                                                   <i class="bi bi-arrow-right"></i>
+                                                            <?php if($_SESSION['user_role'] != 'analyst'): ?>
+                                                                <a href="view_case.php?case_id=<?php echo urlencode($case['case_id']); ?>" 
+                                                                class="btn btn-info" title="View Details">
+                                                                <i class="bi bi-eye"></i>
                                                                 </a>
+                                                                <a href="add_hearing.php?case_id=<?php echo urlencode($case['case_id']); ?>" 
+                                                                class="btn btn-primary" title="Schedule Hearing">
+                                                                <i class="bi bi-calendar-plus"></i>
+                                                                </a>
+                                                                <?php if($case['status'] != 'Closed'): ?>
+                                                                    <a href="index.php#caseMaster" 
+                                                                    class="btn btn-success" title="Go to Case Master">
+                                                                    <i class="bi bi-arrow-right"></i>
+                                                                    </a>
+                                                                <?php endif; ?>
+                                                            <?php else: ?>
+                                                                <span class="text-muted">No Actions Available</span>
                                                             <?php endif; ?>
                                                         </div>
                                                     </td>

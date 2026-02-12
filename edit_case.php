@@ -5,6 +5,7 @@ if(!isset($_SESSION['logged_in'])) {
     exit;
 }
 require_once("connect.php");
+$backUrl = "index.php";
 
 $case_id = $_GET['case_id'] ?? '';
 if(empty($case_id)) {
@@ -69,7 +70,7 @@ if(isset($_POST['update_case'])) {
         </div>
         <div class="d-flex gap-2">
             <button type="submit" name="update_case" class="btn btn-success">Update Case</button>
-            <a href="view_case.php?case_id=<?= urlencode($case['case_id']) ?>" class="btn btn-secondary">Cancel</a>
+            <a href="judge_panel.php?case_id=<?= urlencode($case['case_id']) ?>" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>

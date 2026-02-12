@@ -3,7 +3,8 @@ session_start();
 
 require_once("connect.php");
 require_once("auth_check.php");
-
+requireLogin();
+requireRoles(['admin','judge']);
 /* =====================
    LOGIN CHECK
 ===================== */
@@ -13,12 +14,6 @@ if (!isset($_SESSION['logged_in'])) {
 }
 
 /* =====================
-   ROLE & PERMISSION CHECK
-===================== */
-// if ($_SESSION['user_role'] !== 'judge') {
-//     header('Location:access_denied.php');
-//     die("Only Judge and Admin can schedule hearings");
-// }
 
 if (!can('add_hearing')) {
     header("Location: access_denied.php");

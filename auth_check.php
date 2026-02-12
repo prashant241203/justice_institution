@@ -83,7 +83,7 @@ function getRoleBadge($role = null) {
         'analyst' => 'info',
         'guest'   => 'secondary'
     ];
-
+    
     $color = $colors[$role] ?? 'secondary';
     return "<span class='badge bg-$color'>" . ucfirst($role) . "</span>";
 }
@@ -99,13 +99,22 @@ function can($action) {
         'add_case'        => ['admin', 'clerk'],
         'edit_case'       => ['admin', 'clerk'],
         'delete_case'     => ['admin'],
+
         'add_hearing'     => ['admin', 'judge'],
         'add_judgement'   => ['admin', 'judge'],
+
+        'view_case'       => ['admin', 'judge', 'lawyer', 'clerk'],
+        'view_hearing'    => ['admin', 'judge', 'lawyer'],
+        'view_judgement'  => ['admin', 'judge', 'lawyer'],
+        'upload_document' => ['admin', 'judge', 'lawyer'],
+
         'manage_users'    => ['admin'],
         'export_data'     => ['admin', 'analyst','judge'],
     ];
 
     return isset($permissions[$action]) && in_array($role, $permissions[$action]);
 }
+
+
 
 ?>

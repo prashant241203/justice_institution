@@ -56,7 +56,12 @@ if (isset($_POST['login'])) {
                 $_SESSION['user_role']  = $user['role'];
                 $_SESSION['logged_in']  = true;
 
-                header("Location: index.php");
+                if ($user['role'] === 'lawyer') {
+                    header("Location: lawyer_dashboard.php");
+                } else {
+                    header("Location: index.php");
+                }
+
                 exit;
             }
 

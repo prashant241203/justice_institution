@@ -7,6 +7,8 @@ if (!isset($_SESSION['logged_in'])) {
     header("Location: login.php");
     exit;
 }
+// 🔙 Back URL (jaha se aaye the)
+$backUrl = $_SERVER['HTTP_REFERER'] ?? 'index.php';
 
 require_once("auth_check.php");
 require_once("connect.php");
@@ -28,6 +30,16 @@ if (!$case) {
     exit;
 }
 
+// 🔐 Lawyer can access ONLY his own case
+if (isLawyer()) {
+    $lawyer_id = $_SESSION['user_id'];
+
+    if ($case['lawyer_id'] != $lawyer_id) {
+        header("Location: access_denied.php");
+        exit;
+    }
+}
+
 // Fetch hearings for this case
 $hearingsQuery = mysqli_query($conn, "SELECT * FROM hearings WHERE case_id='$case_id' ORDER BY hearing_date ASC");
 ?>
@@ -44,11 +56,16 @@ $hearingsQuery = mysqli_query($conn, "SELECT * FROM hearings WHERE case_id='$cas
 
 <nav class="navbar navbar-expand-lg navbar-dark" style="background: #0a66c2;">
     <div class="container-fluid">
-        <a class="navbar-brand" href="index.php">Case Details</a>
+        <a class="navbar-brand" href="">Case Details</a>
         <div class="d-flex">
             <span class="text-light me-3"><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
-            <a href="search.php" class="btn btn-sm btn-outline-light me-2">Back to Search</a>
-            <a href="logout.php" class="btn btn-sm btn-outline-light">Logout</a>
+            <!-- <a href="search.php" class="btn btn-sm btn-outline-light me-2">Back to Search</a> -->
+            <a href="logout.php" class="btn btn-sm btn-outline-light me-2">Logout</a>
+            <a href="<?= htmlspecialchars($backUrl) ?>" 
+                class="btn btn-sm btn-outline-light me-2">
+                ← Back
+            </a>
+
         </div>
     </div>
 </nav>
@@ -75,7 +92,6 @@ $hearingsQuery = mysqli_query($conn, "SELECT * FROM hearings WHERE case_id='$cas
                 <div class="col-md-4"><strong>Date Filed:</strong></div>
                 <div class="col-md-8"><?php echo date('d M Y', strtotime($case['date_filed'])); ?></div>
             </div>
-
             <hr>
 
             <h5>Hearings</h5>
@@ -94,8 +110,10 @@ $hearingsQuery = mysqli_query($conn, "SELECT * FROM hearings WHERE case_id='$cas
                             <tr>
                                 <td><?php echo $i++; ?></td>
                                 <td><?php echo date('d M Y', strtotime($hearing['hearing_date'])); ?></td>
-                                <td><?php echo htmlspecialchars($hearing['description']); ?></td>
-                                <td><?php echo htmlspecialchars($hearing['next_action']); ?></td>
+
+                                <td><?= htmlspecialchars($hearing['description'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($hearing['next_action'] ?? '-') ?></td>
+
                             </tr>
                         <?php endwhile; ?>
                     </tbody>
@@ -105,12 +123,65 @@ $hearingsQuery = mysqli_query($conn, "SELECT * FROM hearings WHERE case_id='$cas
             <?php endif; ?>
 
             <div class="mt-3">
-                <?php if ($case['status'] == 'Open' || mysqli_num_rows($hearingsQuery) == 0): ?>
-                    <a href="add_hearing.php?case_id=<?php echo urlencode($case['case_id']); ?>" class="btn btn-primary">
-                        <i class="bi bi-calendar-plus"></i> Add Hearing
-                    </a>
-                <?php endif; ?>
+                    <?php if (
+                            in_array($case['status'], ['Open','Pending']) 
+                            && can('add_hearing')
+                        ): ?>
+                            <a href="add_hearing.php?case_id=<?= urlencode($case['case_id']) ?>" 
+                            class="btn btn-primary">
+                                <i class="bi bi-calendar-plus"></i> Add Hearing
+                              </a>
+                    <?php endif; ?>
             </div>
+                        <h5 class="mt-4">📎 Case Documents</h5>
+
+            <table class="table table-bordered">
+            <tr>
+            <th>#</th>
+            <th>File</th>
+            <th>Date</th>
+            <th>Download</th>
+            </tr>
+
+            <?php
+            $docs = mysqli_query($conn,"
+                SELECT * FROM documents WHERE case_id='$case_id'
+            ");
+
+            if (!$docs) {
+                die("Documents Query Failed: " . mysqli_error($conn));
+            }
+
+            $i = 1;
+            while ($d = mysqli_fetch_assoc($docs)):
+
+            ?>
+            <tr>
+            <td><?= $i++ ?></td>
+            <td><?= htmlspecialchars($d['file_name']) ?></td>
+            <td><?= $d['uploaded_at'] ?></td>
+            <td>
+            <a href="<?= $d['file_path'] ?>" class="btn btn-sm btn-outline-primary" download>
+            Download
+            </a>
+            </td>
+            </tr>
+            <?php endwhile; ?>
+            </table>
+                <?php if (!empty($case['judgement_file'])): ?>
+                <a href="judgement_download.php?case_id=<?= urlencode($case_id) ?>"
+                class="btn btn-danger mt-3">
+                ⚖️ Download Judgement
+                </a>
+                <?php endif; ?>
+
+            <?php if (can('upload_document')): ?>
+            <a href="upload_document.php?case_id=<?= urlencode($case_id) ?>&from=view_case"
+            class="btn btn-outline-success">
+            📎 Upload Document
+            </a>
+            <?php endif; ?>
+
         </div>
     </div>
 </div>

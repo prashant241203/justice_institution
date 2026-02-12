@@ -1,24 +1,33 @@
 <?php
+session_start();
 require_once("connect.php");
+require_once("auth_check.php");
+
+requireLogin();
 
 $limit  = 10;
 $page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $limit;
 
-// Total cases
-$totalQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM cases WHERE case_id != ''");
+$userId = $_SESSION['user_id'];
+$role   = $_SESSION['user_role'];
+
+// Role-based query
+if ($role === 'lawyer') {
+    $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE lawyer_id = $userId");
+    $query = mysqli_query($conn, "SELECT * FROM cases WHERE lawyer_id = $userId ORDER BY case_id DESC LIMIT $offset, $limit");
+} else {
+    $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE case_id != ''");
+    $query = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC LIMIT $offset, $limit");
+}
+
 $totalCases = mysqli_fetch_assoc($totalQuery)['total'];
 $totalPages = ceil($totalCases / $limit);
 
-// Fetch cases
-$query = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC LIMIT $offset, $limit");
-
 $cases = [];
-while($row = mysqli_fetch_assoc($query)){
-    
-    // Check if hearing exists
-    $hearingCheck = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM hearings WHERE case_id = '".$row['case_id']."'");
-    $hasHearing = mysqli_fetch_assoc($hearingCheck)['cnt'] > 0 ? true : false;
+while ($row = mysqli_fetch_assoc($query)) {
+    $hearingCheck = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM hearings WHERE case_id = '".$row['case_id']."'");
+    $hasHearing = mysqli_fetch_assoc($hearingCheck)['cnt'] > 0;
 
     $cases[] = [
         'case_id'     => $row['case_id'],

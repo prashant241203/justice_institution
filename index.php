@@ -134,8 +134,9 @@ if (isset($_POST['add_case'])) {
     $title  = $_POST['title'];
     $date   = $_POST['date_filed'];
     $status = $_POST['status'];
+    $lawyer_id = $_POST['lawyer_id'];
+
     
-    // Generate a unique case_id (like C001, C002, etc.)
     $lastCaseQuery = mysqli_query($conn, "SELECT case_id FROM cases ORDER BY case_id DESC LIMIT 1");
     $lastCase = mysqli_fetch_assoc($lastCaseQuery);
     
@@ -145,14 +146,12 @@ if (isset($_POST['add_case'])) {
     } else {
         $case_id = 'C001';
     }
-
-      $stmt = $conn->prepare(
-      "INSERT INTO cases (case_id, title, date_filed, status)
-      VALUES (?, ?, ?, ?)"
+    $stmt = $conn->prepare(
+      "INSERT INTO cases (case_id, title, date_filed, status, lawyer_id)
+      VALUES (?, ?, ?, ?, ?)"
     );
-    $stmt->bind_param("ssss", $case_id, $title, $date, $status);
+    $stmt->bind_param("sssss", $case_id, $title, $date, $status, $lawyer_id);
     $stmt->execute();
-
     header("Location: index.php");
     exit;
 }
@@ -264,21 +263,28 @@ body { background:#f5f7fb; }
     <li class="nav-item"><a class="nav-link" href="#caseMaster">Case Master</a></li>
     <li class="nav-item"><a class="nav-link" href="#hearings">Hearings</a></li>
     <li class="nav-item"><a class="nav-link" href="#judgements">Judgements</a></li>
-    <li class="nav-item"><a class="nav-link" href="#reports">Reports</a></li>
+    <?php if (!isLawyer()): ?>
+      <li class="nav-item">
+        <a class="nav-link" href="#reports">Reports</a>
+      </li>
+    <?php endif; ?>
+
   </ul>
 
-  <!-- QUICK ACTIONS -->
-  <div class="d-grid gap-2">
-      <?php if (can('add_case')): ?>
-        <button data-bs-toggle="modal" data-bs-target="#addCase">
-          + Add Case
+    <div class="d-grid gap-2">
+        <?php if (isAdmin() || $_SESSION['user_role'] === 'clerk'): ?>
+            <a href="add_case.php" class="btn btn-primary">
+                Add Case
+            </a>
+        <?php endif; ?>
+
+        <button class="btn btn-outline-primary" onclick="runPatternDetection()">
+          ▶ Run Pattern Detection
         </button>
-      <?php endif; ?>
-    <button class="btn btn-outline-primary" onclick="runPatternDetection()">
-      ▶ Run Pattern Detection
-    </button>
-  </div>
+    </div>
+
 </nav>
+
 
 <!-- ================= MAIN ================= -->
 <main class="col-lg-10 p-3">
@@ -711,6 +717,15 @@ else {
 </main>
 </div>
 </div>
+<?php 
+
+  $lawyersQuery = mysqli_query($conn, "SELECT user_id, name FROM users WHERE role='lawyer' ORDER BY name");
+  $lawyers = [];
+  while($row = mysqli_fetch_assoc($lawyersQuery)) {
+      $lawyers[] = $row;
+  }
+
+?>
 
 <!-- ================= ADD CASE MODAL ================= -->
 <div class="modal fade" id="addCase">
@@ -720,15 +735,32 @@ else {
 <h5>Add Case</h5>
 <button class="btn-close" data-bs-dismiss="modal"></button>
 </div>
+
 <div class="modal-body">
-<input name="title" class="form-control mb-2" placeholder="Case Title" required>
-<input type="date" name="date_filed" class="form-control mb-2" required>
-<select name="status" class="form-control">
-<option>Open</option>
-<option>Pending</option>
-<option>Closed</option>
-</select>
+  <input name="title" class="form-control mb-2" placeholder="Case Title" required>
+<input type="date" name="date_filed" class="form-control mb-2" 
+       required 
+       min="<?php echo date('Y-m-d'); ?>">
+
+
+ <select name="lawyer_id" class="form-select mb-2" required>
+            <option value="">-- Assign Lawyer --</option>
+            <?php 
+            // Fetch approved lawyers
+            $lawyersQuery = mysqli_query($conn, "SELECT user_id, name FROM users WHERE role='lawyer' AND status='approved' ORDER BY name");
+            while($row = mysqli_fetch_assoc($lawyersQuery)) {
+                echo "<option value='{$row['user_id']}'>{$row['name']}</option>";
+            }
+            ?>
+  </select>
+
+  <select name="status" class="form-control">
+    <option>Open</option>
+    <option>Pending</option>
+    <option>Closed</option>
+  </select>
 </div>
+
 <div class="modal-footer">
 <button class="ms-btn" name="add_case">Save</button>
 </div>

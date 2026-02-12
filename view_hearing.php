@@ -2,10 +2,25 @@
 session_start();
 require_once("auth_check.php");
 requireLogin();
-requireRoles(['admin','judge']); // sirf admin/judge access
+requireRoles(['admin','judge','lawyer']); 
 require_once("connect.php");
 
 $case_id = $_GET['case_id'] ?? '';
+
+$backUrl = isLawyer() ? 'lawyer_dashboard.php' : 'index.php';
+
+if (isLawyer()) {
+    $lawyer_id = $_SESSION['user_id'];
+    $check = mysqli_query($conn,"
+      SELECT 1 FROM cases
+      WHERE case_id='$case_id'
+      AND lawyer_id=$lawyer_id
+    ");
+    if (mysqli_num_rows($check) === 0) {
+        header("Location: access_denied.php");
+        exit;
+    }
+}
 
 if (!$case_id) {
     die("Case ID missing");
@@ -49,7 +64,9 @@ body { background:#f5f7fb; }
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Hearings for Case <span class="text-primary"><?= htmlspecialchars($case_id) ?></span></h3>
-        <a href="index.php" class="btn btn-back btn-sm">← Back to Cases</a>
+        <a href="<?= $backUrl ?>" class="btn btn-back btn-sm">
+            ← Back to Cases
+        </a>
     </div>
 
     <?php if (count($hearings) === 0): ?>
