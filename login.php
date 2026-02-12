@@ -163,6 +163,10 @@ if (isset($_POST['login'])) {
                         <i class="bi bi-box-arrow-in-right"></i> Login
                     </button>
                 </div>
+                <div class="text-end mt-2">
+                    <a href="forgot_password.php" class="text-decoration-none">Forgot Password?</a>
+                </div>
+
             </form>
 
             <!-- Link to Registration -->
