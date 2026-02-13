@@ -5,7 +5,7 @@ $page  = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-// total patterns
+
 $totalQ = mysqli_query($conn,"
   SELECT COUNT(*) as total
   FROM pattern_flags
@@ -14,7 +14,7 @@ $totalQ = mysqli_query($conn,"
 $total = mysqli_fetch_assoc($totalQ)['total'];
 $pages = ceil($total / $limit);
 
-// data
+
 $q = mysqli_query($conn,"
   SELECT pf.flag_id, pf.case_id, pf.flag_type, pf.description, pf.created_at,
          c.title, c.status

@@ -3,9 +3,6 @@ session_start();
 require_once("connect.php");
 require_once("auth_check.php");
 
-/* =====================
-   LOGIN & PERMISSION
-===================== */
 requireLogin();
 
 if (!can('upload_document')) {
@@ -15,18 +12,13 @@ if (!can('upload_document')) {
 
 $backUrl = isLawyer() ? 'lawyer_dashboard.php' : 'index.php';
 
-/* =====================
-   GET CASE ID
-===================== */
+
 if (!isset($_GET['case_id'])) {
     die("❌ Case ID missing");
 }
 
 $case_id = mysqli_real_escape_string($conn, $_GET['case_id']);
 
-/* =====================
-   FETCH CASE
-===================== */
 $caseQuery = mysqli_query($conn, "SELECT * FROM cases WHERE case_id='$case_id'");
 $case = mysqli_fetch_assoc($caseQuery);
 
@@ -34,9 +26,7 @@ if (!$case) {
     die("❌ Case not found");
 }
 
-/* =====================
-   LAWYER ACCESS CHECK
-===================== */
+
 if (isLawyer()) {
     if ($case['lawyer_id'] != $_SESSION['user_id']) {
         header("Location: access_denied.php");
@@ -44,9 +34,6 @@ if (isLawyer()) {
     }
 }
 
-/* =====================
-   HANDLE UPLOAD
-===================== */
 if (isset($_POST['upload'])) {
 
     if (!isset($_FILES['document']) || $_FILES['document']['error'] != 0) {

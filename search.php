@@ -19,7 +19,7 @@ if(isset($_GET['search'])) {
     $dateFrom = $_GET['date_from'] ?? '';
     $dateTo = $_GET['date_to'] ?? '';
     
-    // Build query
+
     $query = "SELECT * FROM cases WHERE case_id != ''";
     
     if(!empty($searchQuery)) {
@@ -62,7 +62,7 @@ if(isset($_GET['search'])) {
     </style>
 </head>
 <body>
-    <!-- Navigation -->
+    
     <nav class="navbar navbar-expand-lg navbar-dark" style="background: #0a66c2;">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
@@ -86,7 +86,7 @@ if(isset($_GET['search'])) {
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-lg-3">
-                <!-- Search Filters -->
+              
                 <div class="filter-section">
                     <h5><i class="bi bi-funnel"></i> Filters</h5>
                     <form method="GET" action="">
@@ -129,7 +129,7 @@ if(isset($_GET['search'])) {
                     </form>
                 </div>
                 
-                <!-- Quick Stats -->
+                
                 <div class="filter-section">
                     <h6><i class="bi bi-bar-chart"></i> Quick Stats</h6>
                     <div class="mt-3">
@@ -164,7 +164,7 @@ if(isset($_GET['search'])) {
                 </div>
             </div>
             
-            <!-- Search Results -->
+            
             <div class="col-lg-9">
                 <div class="card search-card">
                     <div class="card-header search-header text-white">
@@ -184,7 +184,7 @@ if(isset($_GET['search'])) {
                     <div class="card-body">
                         <?php if(isset($_GET['search'])): ?>
                             <?php if($totalResults > 0): ?>
-                                <!-- Results Summary -->
+                                
                                 <div class="alert alert-info">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
@@ -202,7 +202,7 @@ if(isset($_GET['search'])) {
                                     </div>
                                 </div>
                                 
-                                <!-- Results Table -->
+                                
                                 <div class="table-responsive">
                                     <table class="table table-hover">
                                         <thead class="table-light">
@@ -272,7 +272,7 @@ if(isset($_GET['search'])) {
                                     </table>
                                 </div>
                             <?php else: ?>
-                                <!-- No Results Found -->
+                               
                                 <div class="text-center py-5">
                                     <i class="bi bi-search display-1 text-muted mb-4"></i>
                                     <h3>No Cases Found</h3>
@@ -292,7 +292,7 @@ if(isset($_GET['search'])) {
                                 </div>
                             <?php endif; ?>
                         <?php else: ?>
-                            <!-- Search Instructions -->
+                            
                             <div class="text-center py-5">
                                 <i class="bi bi-search display-1 text-primary mb-4"></i>
                                 <h3>Search Cases</h3>

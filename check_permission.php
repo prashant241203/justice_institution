@@ -1,5 +1,5 @@
 <?php
-// check_permission.php
+
 function checkPermission($requiredRole) {
     if(!isset($_SESSION['user_role'])) {
         header("Location: login.php");

@@ -12,7 +12,6 @@ $offset = ($page - 1) * $limit;
 $userId = $_SESSION['user_id'];
 $role   = $_SESSION['user_role'];
 
-// Role-based query
 if ($role === 'lawyer') {
     $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE lawyer_id = $userId");
     $query = mysqli_query($conn, "SELECT * FROM cases WHERE lawyer_id = $userId ORDER BY case_id DESC LIMIT $offset, $limit");

@@ -4,14 +4,11 @@ $message = '';
 
 if (isset($_POST['register'])) {
 
-    // Sanitize inputs
+ 
     $name = trim(mysqli_real_escape_string($conn, $_POST['name'] ?? ''));
     $email = trim(mysqli_real_escape_string($conn, $_POST['email'] ?? ''));
     $password_raw = $_POST['password'] ?? '';
 
-    // ===============================
-    // ✅ SERVER SIDE VALIDATION
-    // ===============================
 
     if (empty($name)) {
         $message = "Full name is required!";
@@ -33,11 +30,11 @@ if (isset($_POST['register'])) {
     }
     else {
 
-        // Hash password
+  
         $password = password_hash($password_raw, PASSWORD_DEFAULT);
         $role = 'Clerk';
 
-        // Check duplicate email (except rejected)
+        
         $check = mysqli_query(
             $conn,
             "SELECT user_id FROM users WHERE email='$email' AND status != 'rejected'"
@@ -47,7 +44,7 @@ if (isset($_POST['register'])) {
             $message = "Email already registered!";
         } else {
 
-            // Insert user
+          
             $query = "INSERT INTO users (name, email, password, role, status)
                       VALUES ('$name', '$email', '$password', '$role', 'pending')";
 

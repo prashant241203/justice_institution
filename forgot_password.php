@@ -10,7 +10,6 @@ if(isset($_POST['forgot'])) {
 
     $email = trim($_POST['email']);
 
-    // Prepared statement
     $stmt = $conn->prepare("SELECT user_id FROM users WHERE email=? LIMIT 1");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -20,16 +19,16 @@ if(isset($_POST['forgot'])) {
 
         $user = $result->fetch_assoc();
 
-        // Generate secure token
+        
         $token = bin2hex(random_bytes(32));
         $expires = date("Y-m-d H:i:s", strtotime('+30 minutes'));
 
-        // Save token using prepared statement
+      
         $update = $conn->prepare("UPDATE users SET reset_token=?, reset_expires=? WHERE email=?");
         $update->bind_param("sss", $token, $expires, $email);
         $update->execute();
 
-        // Local testing link
+  
         $reset_link = "http://localhost/justice_institution/reset_password.php?token=$token";
 
         $message = "<div class='alert alert-success'>

@@ -1,5 +1,5 @@
 <?php
-// Start session and check login
+
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -7,13 +7,13 @@ if (!isset($_SESSION['logged_in'])) {
     header("Location: login.php");
     exit;
 }
-// 🔙 Back URL (jaha se aaye the)
+
 $backUrl = $_SERVER['HTTP_REFERER'] ?? 'index.php';
 
 require_once("auth_check.php");
 require_once("connect.php");
 
-// Check if case_id is provided
+
 if (!isset($_GET['case_id'])) {
     echo "Case ID missing!";
     exit;
@@ -21,7 +21,7 @@ if (!isset($_GET['case_id'])) {
 
 $case_id = mysqli_real_escape_string($conn, $_GET['case_id']);
 
-// Fetch case details
+
 $query = mysqli_query($conn, "SELECT * FROM cases WHERE case_id='$case_id'");
 $case = mysqli_fetch_assoc($query);
 
@@ -30,7 +30,6 @@ if (!$case) {
     exit;
 }
 
-// 🔐 Lawyer can access ONLY his own case
 if (isLawyer()) {
     $lawyer_id = $_SESSION['user_id'];
 
@@ -40,7 +39,7 @@ if (isLawyer()) {
     }
 }
 
-// Fetch hearings for this case
+
 $hearingsQuery = mysqli_query($conn, "SELECT * FROM hearings WHERE case_id='$case_id' ORDER BY hearing_date ASC");
 ?>
 

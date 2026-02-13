@@ -5,9 +5,7 @@ requireLogin();
 requireRoles(['admin','judge','lawyer','clerk','analyst']);
 require_once("connect.php");
 
-/* =====================
-   CSV EXPORT FUNCTIONS
-===================== */
+
 if (isset($_GET['export'])) {
 
   if (!can('export_data')) {
@@ -16,7 +14,7 @@ if (isset($_GET['export'])) {
     }
 
     $type = $_GET['export'];
-    
+
     switch($type) {
         case 'cases':
             exportCSV('cases', 'cases_export_' . date('Y-m-d') . '.csv');
@@ -35,18 +33,12 @@ if (isset($_GET['export'])) {
 function exportCSV($table, $filename) {
     global $conn;
 
-    /* =========================
-       1️⃣ WHITELIST TABLES
-    ========================== */
     $allowedTables = ['cases', 'hearings', 'judgements'];
 
     if (!in_array($table, $allowedTables, true)) {
         die("Invalid export request");
     }
 
-    /* =========================
-       2️⃣ SAFE QUERY
-    ========================== */
     $query = "SELECT * FROM `$table`";
     $result = mysqli_query($conn, $query);
 
@@ -54,21 +46,18 @@ function exportCSV($table, $filename) {
         die("Query failed: " . mysqli_error($conn));
     }
 
-    /* =========================
-       3️⃣ CSV OUTPUT
-    ========================== */
+
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
 
     $output = fopen('php://output', 'w');
 
-    // Column headers
+
     foreach (mysqli_fetch_fields($result) as $field) {
         $headers[] = $field->name;
     }
     fputcsv($output, $headers);
 
-    // Rows
     while ($row = mysqli_fetch_assoc($result)) {
         fputcsv($output, $row);
     }
@@ -78,10 +67,6 @@ function exportCSV($table, $filename) {
 }
 
 
-/* =====================
-   REPORT DATA
-===================== */
-// Case Status Distribution
 $statusData = [
   'Open' => 0,
   'Pending' => 0,
@@ -94,14 +79,14 @@ while($row = mysqli_fetch_assoc($statusQuery)) {
   }
 }
 
-// Judgement Outcomes
+
 $outcomeData = [];
 $outcomeQuery = mysqli_query($conn, "SELECT outcome, COUNT(*) as count FROM judgements GROUP BY outcome");
 while($row = mysqli_fetch_assoc($outcomeQuery)) {
   $outcomeData[$row['outcome']] = $row['count'];
 }
 
-// Monthly Case Data (last 6 months)
+
 $monthlyData = [];
 for($i = 5; $i >= 0; $i--) {
   $month = date('Y-m', strtotime("-$i months"));
@@ -121,9 +106,7 @@ for($i = 5; $i >= 0; $i--) {
   ];
 }
 
-/* =====================
-   ADD CASE - FIXED for varchar case_id
-===================== */
+
 if (isset($_POST['add_case'])) {
 
     if (!can('add_case')) {
@@ -136,10 +119,9 @@ if (isset($_POST['add_case'])) {
     $status = $_POST['status'];
     $lawyer_id = $_POST['lawyer_id'];
 
-    
     $lastCaseQuery = mysqli_query($conn, "SELECT case_id FROM cases ORDER BY case_id DESC LIMIT 1");
     $lastCase = mysqli_fetch_assoc($lastCaseQuery);
-    
+
     if ($lastCase && !empty($lastCase['case_id']) && preg_match('/^C(\d+)$/', $lastCase['case_id'], $matches)) {
         $nextNumber = intval($matches[1]) + 1;
         $case_id = 'C' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
@@ -156,29 +138,17 @@ if (isset($_POST['add_case'])) {
     exit;
 }
 
-/* =====================
-   DASHBOARD COUNTS
-===================== */
+
 $totalCases      = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM cases WHERE case_id != ''"))[0];
 $totalHearings   = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM hearings"))[0];
 $totalJudgements = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM judgements"))[0];
 $patternFlags    = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM pattern_flags"))[0];
 
 
-
-
-
-/* =====================
-   TABLE DATA
-===================== */
-// Only get cases with valid case_id
 $cases = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC");
 $hearings   = mysqli_query($conn,"SELECT * FROM hearings ORDER BY hearing_id DESC");
 $judgements = mysqli_query($conn,"SELECT * FROM judgements ORDER BY judgement_id DESC");
 
-/* =====================
-   CHART DATA
-===================== */
 $caseTitles = [];
 $q = mysqli_query($conn,"SELECT title FROM cases WHERE case_id != ''");
 while($r = mysqli_fetch_assoc($q)){
@@ -213,7 +183,6 @@ body { background:#f5f7fb; }
 
 <body>
 
-<!-- ================= HEADER ================= -->
 <header class="app-header py-2 shadow-sm">
   <div class="container-fluid d-flex align-items-center">
     <h5 class="mb-0 me-auto">Justice & Institutions</h5>
@@ -227,20 +196,19 @@ body { background:#f5f7fb; }
         <?php echo htmlspecialchars($user['name']); ?>
         <?php echo getRoleBadge(); ?>
       </span>
-      
-      <!-- Show role-specific buttons -->
+
       <?php if(isAdmin()): ?>
         <a href="admin_panel.php" class="btn btn-sm btn-danger me-2">
           <i class="bi bi-shield-check"></i> Admin
         </a>
       <?php endif; ?>
-      
+
       <?php if(isJudge()): ?>
         <a href="judge_panel.php" class="btn btn-sm btn-success me-2">
           <i class="bi bi-gavel"></i> Judge
         </a>
       <?php endif; ?>
-      
+
       <a href="search.php" class="btn btn-sm btn-outline-light me-2">
         <i class="bi bi-search"></i> Search
       </a>
@@ -251,13 +219,11 @@ body { background:#f5f7fb; }
   </div>
 </header>
 
-
 <div class="container-fluid">
 <div class="row">
 
-<!-- ================= SIDEBAR ================= -->
 <nav class="col-lg-2 sidebar p-3">
-  <!-- <h6>Navigation</h6> -->
+
   <ul class="nav flex-column mb-4">
     <li class="nav-item"><a class="nav-link active" href="#dashboard">Dashboard</a></li>
     <li class="nav-item"><a class="nav-link" href="#caseMaster">Case Master</a></li>
@@ -285,11 +251,8 @@ body { background:#f5f7fb; }
 
 </nav>
 
-
-<!-- ================= MAIN ================= -->
 <main class="col-lg-10 p-3">
 
-<!-- ===== DASHBOARD ===== -->
 <section id="dashboard" class="mb-4">
 <div class="row g-3">
   <div class="col-md-3"><div class="card p-3"><small>Total Cases</small><h4><?= $totalCases ?></h4></div></div>
@@ -327,11 +290,9 @@ body { background:#f5f7fb; }
 </div>
 </section>
 
-<!-- ===== CASE MASTER ===== -->
 <section id="caseMaster" class="mb-4">
   <div class="card p-3">
 
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Case Master</h5>
 
@@ -348,7 +309,6 @@ body { background:#f5f7fb; }
       </div>
     </div>
 
-    <!-- Case Table -->
     <table class="table table-bordered">
       <thead>
         <tr>
@@ -360,7 +320,6 @@ body { background:#f5f7fb; }
         </tr>
       </thead>
 
-      <!-- 🔥 AJAX will fill this -->
       <tbody id="caseBody">
         <tr>
           <td colspan="5" class="text-center">
@@ -370,17 +329,14 @@ body { background:#f5f7fb; }
       </tbody>
     </table>
 
-    <!-- Pagination -->
     <ul class="pagination justify-content-center mt-3"
         id="casePagination"></ul>
   </div>
 </section>
 
-<!-- ===== HEARINGS ===== -->
 <section id="hearings" class="mb-4">
   <div class="card p-3">
 
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Hearings</h5>
       <div>
@@ -390,7 +346,6 @@ body { background:#f5f7fb; }
       </div>
     </div>
 
-    <!-- Table -->
     <table class="table table-bordered">
       <thead>
         <tr>
@@ -401,7 +356,6 @@ body { background:#f5f7fb; }
         </tr>
       </thead>
 
-      <!-- 🔥 AJAX fills this -->
       <tbody id="hearingBody">
         <tr>
           <td colspan="4" class="text-center">Loading hearings...</td>
@@ -409,19 +363,15 @@ body { background:#f5f7fb; }
       </tbody>
     </table>
 
-    <!-- Pagination -->
     <ul class="pagination justify-content-center mt-3"
         id="hearingPagination"></ul>
 
   </div>
 </section>
 
-
-<!-- ===== JUDGEMENTS ===== -->
 <section id="judgements" class="mb-4">
   <div class="card p-3">
 
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Judgements</h5>
       <div>
@@ -431,7 +381,6 @@ body { background:#f5f7fb; }
       </div>
     </div>
 
-    <!-- Table -->
     <table class="table table-bordered">
       <thead>
         <tr>
@@ -443,7 +392,6 @@ body { background:#f5f7fb; }
         </tr>
       </thead>
 
-      <!-- 🔥 AJAX will fill this -->
       <tbody id="judgementBody">
         <tr>
           <td colspan="5" class="text-center">Loading judgements...</td>
@@ -451,14 +399,12 @@ body { background:#f5f7fb; }
       </tbody>
     </table>
 
-    <!-- Pagination -->
     <ul class="pagination justify-content-center mt-3"
         id="judgementPagination"></ul>
 
   </div>
 </section>
 
-<!-- ===== REPORTS ===== -->
 <section id="reports">
 <div class="card p-3">
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -479,7 +425,7 @@ body { background:#f5f7fb; }
       </div>
     </div>
   </div>
-  
+
   <div class="col-md-4">
     <div class="card">
       <div class="card-body text-center">
@@ -488,7 +434,7 @@ body { background:#f5f7fb; }
       </div>
     </div>
   </div>
-  
+
   <div class="col-md-4">
     <div class="card">
       <div class="card-body">
@@ -566,9 +512,9 @@ body { background:#f5f7fb; }
             </thead>
             <tbody>
               <?php
-              // Case Type Analysis (You can categorize by title keywords)
-              $caseTypes = ['Property', 'Criminal', 'Civil', 'Family', 'Commercial'];
               
+              $caseTypes = ['Property', 'Criminal', 'Civil', 'Family', 'Commercial'];
+
               foreach($caseTypes as $type) {
                 $typeQuery = mysqli_query($conn, 
                   "SELECT 
@@ -578,11 +524,11 @@ body { background:#f5f7fb; }
                     COUNT(*) as total
                    FROM cases 
                    WHERE title LIKE '%$type%' AND case_id != ''");
-                
+
                 $typeData = mysqli_fetch_assoc($typeQuery);
                 $totalType = $typeData['total'] ?? 0;
                 $percent = ($totalType > 0) ? round(($typeData['closed_count'] / $totalType) * 100) : 0;
-                
+
                 if($totalType > 0) {
                   echo "<tr>
                     <td>$type Cases</td>
@@ -605,7 +551,7 @@ body { background:#f5f7fb; }
                 }
               }
               ?>
-              <!-- Overall Summary -->
+
               <?php
               $summaryQuery = mysqli_query($conn, 
                 "SELECT 
@@ -613,7 +559,7 @@ body { background:#f5f7fb; }
                   SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_count,
                   SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed_count
                  FROM cases WHERE case_id != ''");
-              
+
               $summary = mysqli_fetch_assoc($summaryQuery);
               $overallPercent = ($totalCases > 0) ? 
                 round(($summary['closed_count'] / $totalCases) * 100) : 0;
@@ -726,7 +672,6 @@ else {
 
 ?>
 
-<!-- ================= ADD CASE MODAL ================= -->
 <div class="modal fade" id="addCase">
 <div class="modal-dialog">
 <form method="POST" class="modal-content">
@@ -741,11 +686,10 @@ else {
        required 
        min="<?php echo date('Y-m-d'); ?>">
 
-
  <select name="lawyer_id" class="form-select mb-2" required>
             <option value="">-- Assign Lawyer --</option>
             <?php 
-            // Fetch approved lawyers
+            
             $lawyersQuery = mysqli_query($conn, "SELECT user_id, name FROM users WHERE role='lawyer' AND status='approved' ORDER BY name");
             while($row = mysqli_fetch_assoc($lawyersQuery)) {
                 echo "<option value='{$row['user_id']}'>{$row['name']}</option>";
@@ -768,7 +712,7 @@ else {
 </div>
 
 <script>
-  
+
 let monthlyChart;
 
 function loadMonthlyChart(month, year) {
@@ -776,7 +720,7 @@ function loadMonthlyChart(month, year) {
   fetch(`fetch_monthly_cases.php?month=${month}&year=${year}`)
     .then(res => res.json())
     .then(data => {
-        
+
       const ctx = document.getElementById('monthlyCaseChart');
 
       if (monthlyChart) monthlyChart.destroy();
@@ -784,13 +728,13 @@ function loadMonthlyChart(month, year) {
       monthlyChart = new Chart(ctx, {
        type: 'line',
         data: {
-          labels: data.labels, // keeps month names
+          labels: data.labels, 
           datasets: [{
             label: 'Cases Filed',
-            data: data.counts,  // monthly totals
+            data: data.counts,  
             borderColor: '#0a66c2',
-            backgroundColor: 'rgba(10,102,194,0.1)', // light shaded area
-            tension: 0.3,       // smooth curve
+            backgroundColor: 'rgba(10,102,194,0.1)',
+            tension: 0.3,    
             fill: true
           }]
         },
@@ -810,18 +754,13 @@ function loadMonthlyChart(month, year) {
     });
 }
 
-// dropdown events
+
 filterMonth.onchange = () =>
   loadMonthlyChart(filterMonth.value, filterYear.value);
 
 filterYear.onchange = () =>
   loadMonthlyChart(filterMonth.value, filterYear.value);
 
-// page load
-
-
-
-  // ================= STATUS DISTRIBUTION =================
 new Chart(document.getElementById('statusChart'), {
   type: 'doughnut',
   data: {
@@ -840,7 +779,7 @@ new Chart(document.getElementById('statusChart'), {
   }
 });
 
-// ================= OUTCOME CHART =================
+
 <?php
 $outcomeLabels = array_keys($outcomeData);
 $outcomeCounts = array_values($outcomeData);
@@ -866,7 +805,6 @@ new Chart(document.getElementById('outcomeChart'), {
   }
 });
 
-// ================= MONTHLY TIMELINE =================
 <?php
 $monthLabels  = array_column($monthlyData, 'month');
 $monthOpen    = array_column($monthlyData, 'open');
@@ -918,7 +856,6 @@ new Chart(document.getElementById('monthlyChart'), {
   }
 });
 
-
 function loadCases(page = 1) {
   fetch("fetch_cases.php?page=" + page)
     .then(res => res.json())
@@ -936,20 +873,20 @@ function loadCases(page = 1) {
 
       data.cases.forEach(c => {
         let button = '';
-        
+
         if(c.status === 'Open') {
-            // Open → Always Add Hearing
+           
             button = `<a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-primary btn-sm">Add Hearing</a>`;
         } else if(c.status === 'Pending') {
-            // Pending → Add Hearing if no hearing exists, else View
+            
             button = c.has_hearing
                 ? `<a href="view_hearing.php?case_id=${c.case_id}" class="btn btn-secondary btn-sm">View Hearing</a>`
                 : `<a href="add_hearing.php?case_id=${c.case_id}" class="btn btn-primary btn-sm">Add Hearing</a>`;
         } else if(c.status === 'Closed') {
-            // Closed → Always View Hearing
+
             button = `<a href="view_hearing.php?case_id=${c.case_id}" class="btn btn-secondary btn-sm">View Hearing</a>`;
         }
-        
+
         document.getElementById("caseBody").innerHTML += `
             <tr>
                 <td>${c.case_id}</td>
@@ -961,8 +898,6 @@ function loadCases(page = 1) {
         `;
     });
 
-
-      // Pagination buttons
       let prevPage = page > 1 ? page - 1 : 1;
       let nextPage = page < data.pages ? page + 1 : data.pages;
 
@@ -983,8 +918,6 @@ function loadCases(page = 1) {
 }
 
 
-
-// ================= HEARINGS =================
 function loadHearings(page = 1) {
   fetch("fetch_hearings.php?page=" + page)
     .then(res => res.json())
@@ -1010,7 +943,7 @@ function loadHearings(page = 1) {
           </tr>`;
       });
 
-      // Pagination
+    
       let prevPage = page > 1 ? page - 1 : 1;
       let nextPage = page < data.pages ? page + 1 : data.pages;
 
@@ -1030,7 +963,6 @@ function loadHearings(page = 1) {
     });
 }
 
-// ================= JUDGEMENTS =================
 function loadJudgements(page = 1) {
   fetch("fetch_judgements.php?page=" + page)
     .then(res => res.json())
@@ -1060,7 +992,6 @@ function loadJudgements(page = 1) {
           </tr>`;
       });
 
-      // Pagination
       let prevPage = page > 1 ? page - 1 : 1;
       let nextPage = page < data.pages ? page + 1 : data.pages;
 
@@ -1112,7 +1043,7 @@ function loadPatternList(page = 1) {
           </tr>`;
       });
 
-      // pagination
+      
       for (let i = 1; i <= data.pages; i++) {
         pag.innerHTML += `
           <li class="page-item ${i === data.current ? 'active' : ''}">
@@ -1122,8 +1053,6 @@ function loadPatternList(page = 1) {
       }
     });
 }
-
-
 
 let patternChart;
 
@@ -1171,7 +1100,7 @@ function loadPatternChart() {
         });
 }
 
-// ================= PATTERN =================
+
 function runPatternDetection(){
   fetch("run_pattern.php")
     .then(res => res.json())

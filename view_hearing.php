@@ -26,7 +26,7 @@ if (!$case_id) {
     die("Case ID missing");
 }
 
-// Fetch hearing(s) for this case
+
 $query = mysqli_query($conn, "SELECT h.*, u.name as created_by_name 
                               FROM hearings h 
                               LEFT JOIN users u ON h.created_by = u.user_id
