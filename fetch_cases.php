@@ -13,11 +13,11 @@ $userId = $_SESSION['user_id'];
 $role   = $_SESSION['user_role'];
 
 if ($role === 'lawyer') {
-    $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE lawyer_id = $userId");
-    $query = mysqli_query($conn, "SELECT * FROM cases WHERE lawyer_id = $userId ORDER BY case_id DESC LIMIT $offset, $limit");
+    $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE lawyer_id = $userId AND is_deleted = 0 ");
+    $query = mysqli_query($conn, "SELECT * FROM cases WHERE lawyer_id = $userId AND is_deleted = 0 ORDER BY case_id DESC LIMIT $offset, $limit");
 } else {
-    $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE case_id != ''");
-    $query = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC LIMIT $offset, $limit");
+    $totalQuery = mysqli_query($conn, "SELECT COUNT(*) AS total FROM cases WHERE case_id != '' AND is_deleted = 0");
+    $query = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' AND is_deleted = 0 ORDER BY case_id DESC LIMIT $offset, $limit");
 }
 
 $totalCases = mysqli_fetch_assoc($totalQuery)['total'];

@@ -6,6 +6,32 @@ requireRoles(['admin','judge','lawyer','clerk','analyst']);
 require_once("connect.php");
 
 
+if (isset($_GET['delete_case'])) {
+
+    if (!can('delete_case')) {
+        header("Location: access_denied.php");
+        exit;
+    }
+
+    $case_id = mysqli_real_escape_string($conn, $_GET['delete_case']);
+    $admin_id = $_SESSION['user_id'];
+
+    $stmt = $conn->prepare("
+        UPDATE cases 
+        SET is_deleted = 1,
+            deleted_at = NOW(),
+            deleted_by = ?
+        WHERE case_id = ?
+    ");
+
+    $stmt->bind_param("is", $admin_id, $case_id);
+    $stmt->execute();
+
+    header("Location: index.php");
+    exit;
+}
+
+
 if (isset($_GET['export'])) {
 
   if (!can('export_data')) {
@@ -39,7 +65,11 @@ function exportCSV($table, $filename) {
         die("Invalid export request");
     }
 
-    $query = "SELECT * FROM `$table`";
+  if ($table === 'cases') {
+      $query = "SELECT * FROM cases WHERE is_deleted = 0";
+  } else {
+      $query = "SELECT * FROM `$table`";
+  }
     $result = mysqli_query($conn, $query);
 
     if (!$result) {
@@ -72,7 +102,7 @@ $statusData = [
   'Pending' => 0,
   'Closed' => 0
 ];
-$statusQuery = mysqli_query($conn, "SELECT status, COUNT(*) as count FROM cases WHERE case_id != '' GROUP BY status");
+$statusQuery = mysqli_query($conn, "SELECT status, COUNT(*) as count FROM cases WHERE case_id != '' AND is_deleted = 0 GROUP BY status");
 while($row = mysqli_fetch_assoc($statusQuery)) {
   if(isset($statusData[$row['status']])) {
     $statusData[$row['status']] = $row['count'];
@@ -96,7 +126,7 @@ for($i = 5; $i >= 0; $i--) {
       SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
       SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed
      FROM cases 
-     WHERE DATE_FORMAT(date_filed, '%Y-%m') = '$month'");
+     WHERE DATE_FORMAT(date_filed, '%Y-%m') = '$month' AND is_deleted = 0" );
   $data = mysqli_fetch_assoc($query);
   $monthlyData[] = [
     'month' => date('M Y', strtotime($month . '-01')),
@@ -105,7 +135,6 @@ for($i = 5; $i >= 0; $i--) {
     'closed' => $data['closed'] ?? 0
   ];
 }
-
 
 if (isset($_POST['add_case'])) {
 
@@ -132,6 +161,7 @@ if (isset($_POST['add_case'])) {
       "INSERT INTO cases (case_id, title, date_filed, status, lawyer_id)
       VALUES (?, ?, ?, ?, ?)"
     );
+
     $stmt->bind_param("sssss", $case_id, $title, $date, $status, $lawyer_id);
     $stmt->execute();
     header("Location: index.php");
@@ -139,13 +169,13 @@ if (isset($_POST['add_case'])) {
 }
 
 
-$totalCases      = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM cases WHERE case_id != ''"))[0];
+$totalCases      = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM cases WHERE  is_deleted = 0 AND case_id != ''"))[0];
 $totalHearings   = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM hearings"))[0];
 $totalJudgements = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM judgements"))[0];
 $patternFlags    = mysqli_fetch_row(mysqli_query($conn,"SELECT COUNT(*) FROM pattern_flags"))[0];
 
 
-$cases = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' ORDER BY case_id DESC");
+$cases = mysqli_query($conn, "SELECT * FROM cases WHERE case_id != '' AND is_deleted = 0 ORDER BY case_id DESC");
 $hearings   = mysqli_query($conn,"SELECT * FROM hearings ORDER BY hearing_id DESC");
 $judgements = mysqli_query($conn,"SELECT * FROM judgements ORDER BY judgement_id DESC");
 
@@ -457,7 +487,7 @@ body { background:#f5f7fb; }
             <strong>
               <?php
               $totalClosed = mysqli_fetch_row(mysqli_query($conn, 
-                "SELECT COUNT(*) FROM cases WHERE status = 'Closed'"))[0];
+                "SELECT COUNT(*) FROM cases  WHERE status = 'Closed'"))[0];
               $clearanceRate = ($totalCases > 0) ? round(($totalClosed / $totalCases) * 100) : 0;
               echo $clearanceRate . "%";
               ?>
@@ -523,7 +553,7 @@ body { background:#f5f7fb; }
                     SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) as closed_count,
                     COUNT(*) as total
                    FROM cases 
-                   WHERE title LIKE '%$type%' AND case_id != ''");
+                   WHERE title LIKE '%$type%' AND case_id != '' AND is_deleted = 0");
 
                 $typeData = mysqli_fetch_assoc($typeQuery);
                 $totalType = $typeData['total'] ?? 0;
@@ -873,6 +903,16 @@ function loadCases(page = 1) {
 
       data.cases.forEach(c => {
         let button = '';
+        let deleteBtn = '';
+
+        if (<?= json_encode(isAdmin()) ?>) {
+          deleteBtn = `
+              <a href="index.php?delete_case=${c.case_id}" 
+                class="btn btn-danger btn-sm ms-1"
+                onclick="return confirm('Are you sure you want to delete this case?')">
+                Delete
+              </a>`;
+         }
 
         if(c.status === 'Open') {
            
@@ -894,6 +934,7 @@ function loadCases(page = 1) {
                 <td>${c.date_filed}</td>
                 <td>${c.status}</td>
                 <td>${button}</td>
+                <td>${deleteBtn ? button + " " + deleteBtn : button}</td>
             </tr>
         `;
     });
@@ -1099,7 +1140,6 @@ function loadPatternChart() {
             });
         });
 }
-
 
 function runPatternDetection(){
   fetch("run_pattern.php")

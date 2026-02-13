@@ -2,7 +2,6 @@
 session_start();
 require_once("connect.php");
 
-// Check if admin
 if(!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'admin'){
     header("Location: access_denied.php");
     exit;
@@ -14,7 +13,7 @@ if(isset($_GET['approve'])){
     exit;
 }
 
-// ---------- REJECT USER ----------
+
 if(isset($_GET['reject'])){
     $id = intval($_GET['reject']);
     mysqli_query($conn,"UPDATE users SET status='rejected' WHERE user_id=$id");
@@ -22,7 +21,22 @@ if(isset($_GET['reject'])){
     exit;
 }
 
-// ---------- HANDLE ADD USER ----------
+if(isset($_GET['restore_case'])){
+
+    $case_id = mysqli_real_escape_string($conn, $_GET['restore_case']);
+
+    mysqli_query($conn,"
+        UPDATE cases 
+        SET is_deleted = 0,
+            deleted_at = NULL,
+            deleted_by = NULL
+        WHERE case_id = '$case_id' AND is_deleted = 1
+    ");
+
+    header("Location: admin_panel.php");
+    exit;
+}
+
 if(isset($_POST['add_user'])){
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
@@ -34,7 +48,6 @@ if(isset($_POST['add_user'])){
     exit;
 }
 
-// ---------- HANDLE EDIT USER ----------
 if(isset($_POST['edit_user'])){
     $id = intval($_POST['user_id']);
     $name = mysqli_real_escape_string($conn, $_POST['name']);
@@ -55,7 +68,6 @@ if(isset($_POST['edit_user'])){
     exit;
 }
 
-// ---------- HANDLE DELETE USER ----------
 if(isset($_GET['delete'])){
     $id = intval($_GET['delete']);
     if($id != $_SESSION['user_id']){
@@ -65,19 +77,18 @@ if(isset($_GET['delete'])){
     exit;
 }
 
-// ---------- FETCH USERS ----------
 $users = mysqli_query(
     $conn,
     "SELECT * FROM users ORDER BY status='pending' DESC, user_id ASC"
 );
 
+$totalUsers = mysqli_fetch_assoc(
+    mysqli_query($conn,"SELECT COUNT(*) as total FROM users")
+)['total'];
 
-// ---------- STATS ----------
-$totalUsers = mysqli_num_rows($users);
 $today = date('Y-m-d');
 $activeToday = mysqli_fetch_assoc(mysqli_query($conn,"SELECT COUNT(DISTINCT user_id) AS active_today FROM audit_logs WHERE DATE(created_at)='$today'"))['active_today'] ?? 0;
 
-// ---------- ROLE DISTRIBUTION ----------
 $roleCounts = ['admin'=>0,'judge'=>0,'lawyer'=>0,'clerk'=>0,'analyst'=>0];
 $roleResult = mysqli_query($conn,"SELECT role,COUNT(*) as count FROM users GROUP BY role");
 while($row = mysqli_fetch_assoc($roleResult)){
@@ -100,7 +111,6 @@ while($row = mysqli_fetch_assoc($roleResult)){
 </head>
 <body class="bg-light">
 
-<!-- Navigation -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
 <div class="container-fluid">
     <a class="navbar-brand" href="#"><i class="bi bi-shield-lock"></i> Admin Panel</a>
@@ -118,7 +128,7 @@ while($row = mysqli_fetch_assoc($roleResult)){
 <div class="container-fluid mt-4">
 <div class="row">
 
-    <!-- Sidebar -->
+
     <div class="col-lg-3">
         <div class="card mb-4">
             <div class="card-header bg-danger text-white">
@@ -135,7 +145,7 @@ while($row = mysqli_fetch_assoc($roleResult)){
             </div>
         </div>
 
-        <!-- Quick Stats -->
+
         <div class="card">
             <div class="card-header bg-secondary text-white"><h6 class="mb-0"><i class="bi bi-speedometer2"></i> System Stats</h6></div>
             <div class="card-body">
@@ -146,7 +156,6 @@ while($row = mysqli_fetch_assoc($roleResult)){
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="col-lg-9">
         <div class="card admin-card mb-4">
             <div class="card-body">
@@ -154,8 +163,98 @@ while($row = mysqli_fetch_assoc($roleResult)){
                 <p class="card-text">You have full control over the Justice Management System.</p>
             </div>
         </div>
+<div class="card mt-4">
+<div class="card-header bg-warning text-dark">
+    <h5 class="mb-0">Deleted Cases</h5>
+</div>
+<div class="card-body table-responsive">
 
-        <!-- User Management Table -->
+<table class="table table-bordered">
+<thead>
+<tr>
+    <th>Case ID</th>
+    <th>Title</th>
+    <th>Deleted At</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody>
+
+<?php
+
+$del_limit  = 5; 
+$del_page   = isset($_GET['del_page']) ? max(1, intval($_GET['del_page'])) : 1;
+$del_offset = ($del_page - 1) * $del_limit;
+
+
+$del_total_query = mysqli_query($conn, "
+    SELECT COUNT(*) as total 
+    FROM cases 
+    WHERE is_deleted = 1
+");
+$del_total = mysqli_fetch_assoc($del_total_query)['total']  ;
+$del_pages = ceil($del_total / $del_limit);
+
+
+$deletedCases = mysqli_query($conn,"
+    SELECT * FROM cases 
+    WHERE is_deleted = 1 
+    ORDER BY deleted_at DESC
+    LIMIT $del_offset, $del_limit
+");
+
+
+if(mysqli_num_rows($deletedCases) == 0){
+    echo "<tr><td colspan='4' class='text-center'>No deleted cases</td></tr>";
+}
+
+while($c = mysqli_fetch_assoc($deletedCases)){
+    echo "<tr>
+        <td>{$c['case_id']}</td>
+        <td>{$c['title']}</td>
+        <td>{$c['deleted_at']}</td>
+        <td>
+            <a href='admin_panel.php?restore_case={$c['case_id']}'
+               class='btn btn-success btn-sm'
+               onclick=\"return confirm('Restore this case?')\">
+               Restore
+            </a>
+        </td>
+    </tr>";
+}
+?>
+</tbody>
+</table>
+<?php if($del_pages > 1): ?>
+<nav>
+<ul class="pagination justify-content-center">
+
+<?php if($del_page > 1): ?>
+<li class="page-item">
+<a class="page-link" href="?del_page=<?= $del_page - 1 ?>">Previous</a>
+</li>
+<?php endif; ?>
+
+<?php for($i = 1; $i <= $del_pages; $i++): ?>
+<li class="page-item <?= ($i == $del_page) ? 'active' : '' ?>">
+<a class="page-link" href="?del_page=<?= $i ?>"><?= $i ?></a>
+</li>
+<?php endfor; ?>
+
+<?php if($del_page < $del_pages): ?>
+<li class="page-item">
+<a class="page-link" href="?del_page=<?= $del_page + 1 ?>">Next</a>
+</li>
+<?php endif; ?>
+
+</ul>
+</nav>
+<?php endif; ?>
+
+
+</div>
+</div>
+       
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center bg-dark text-white">
                 <h5 class="mb-0"><i class="bi bi-people-fill"></i> Users</h5>
@@ -226,7 +325,7 @@ while($row = mysqli_fetch_assoc($roleResult)){
             </div>
         </div>
 
-        <!-- Role Distribution -->
+      
         <div class="row mt-4">
             <div class="col-md-6">
                 <div class="card">
@@ -239,7 +338,8 @@ while($row = mysqli_fetch_assoc($roleResult)){
 </div>
 </div>
 
-<!-- Add User Modal -->
+
+
 <div class="modal fade" id="addUserModal" tabindex="-1">
   <div class="modal-dialog">
     <form method="POST">
@@ -274,7 +374,7 @@ while($user=mysqli_fetch_assoc($users)):
       <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white"><h5 class="modal-title">Edit User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</select>
+
 </div>
         <div class="modal-body">
              <select class="form-select mb-2" name="status">
