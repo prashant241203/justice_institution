@@ -13,6 +13,7 @@ if (session_status() == PHP_SESSION_NONE) {
     <title>Access Denied - Justice System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
     <style>
       body {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -20,39 +21,6 @@ if (session_status() == PHP_SESSION_NONE) {
         display: flex;
         align-items: center;
         justify-content: center;
-      }
-
-      .access-card {
-        max-width: 600px;
-        border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-        overflow: hidden;
-      }
-
-      .access-header {
-        background: #dc3545;
-        color: white;
-        padding: 30px;
-        text-align: center;
-      }
-
-      .access-body {
-        background: white;
-        padding: 40px;
-      }
-
-      .role-info {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
-        margin: 20px 0;
-      }
-
-      .btn-group-custom {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin-top: 30px;
       }
     </style>
   </head>

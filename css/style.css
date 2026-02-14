@@ -41,3 +41,35 @@ body {
 table.data-table thead {
   background: #f7fbff
 }
+.access-card {
+        max-width: 600px;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+}
+
+.access-header {
+        background: #dc3545;
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .access-body {
+        background: white;
+        padding: 40px;
+      }
+
+      .role-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .btn-group-custom {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 30px;
+      }
